@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="Kalendář">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="apple-touch-icon" id="touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -795,6 +795,7 @@ async function initPushToggle(s){
 }
 
 /* ================= start ================= */
+(function(){ try { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); c.width = c.height = 180; c.getContext('2d').drawImage(img, 0, 0, 180, 180); document.getElementById('touch-icon').href = c.toDataURL('image/png'); }; img.src = 'icon.svg'; } catch(e){} })();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 boot();
 </script>
