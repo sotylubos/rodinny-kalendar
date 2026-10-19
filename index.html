@@ -494,7 +494,8 @@ function openEditor(e, preset){
       start: e.all_day?'09:00':hm(new Date(e.starts_at)), end: (!e.all_day && e.ends_at)?hm(new Date(e.ends_at)):'', note:e.note||''
     } : Object.assign({ title:'', member_id: me.id, date: selDay < todayKey() ? todayKey() : selDay, endDate:null, all_day:false, start:'09:00', end:'10:00', note:'' }, preset||{});
   if (!d.endDate) d.endDate = d.date;
-  let rep = 'none';
+  let rep = e && e.series_id ? inferRep(e) : 'none', scope = 'all';
+  const lastKey = e && e.series_id ? events.filter(x=>x.series_id===e.series_id).map(evStartKey).sort().pop() : null;
   openSheet(`
     <h3>${isNew?'Nová událost':'Upravit událost'}</h3>
     <label class="field"><span>Co</span><input class="inp" id="f-title" placeholder="Zubař, práce, trénink…" value="${esc(d.title)}" maxlength="200"></label>
@@ -506,7 +507,8 @@ function openEditor(e, preset){
       <label class="field" id="w-enddate"><span>Do</span><input class="inp" type="date" id="f-enddate" value="${d.endDate}"></label></div>
     <div class="row2" id="w-times"><label class="field"><span>Od</span><input class="inp" type="time" id="f-start" value="${d.start}"></label>
       <label class="field"><span>Do</span><input class="inp" type="time" id="f-end" value="${d.end}"></label></div>
-    ${isNew?`<label class="field"><span>Opakovat</span><select class="inp" id="f-rep">
+    ${e&&e.series_id?'<div class="field"><span>Změnit</span><div class="who" id="f-scope"><button data-s="all" class="on" style="background:var(--accent)">Tuto i všechny další</button><button data-s="one">Jen tuto</button></div></div>':''}
+    ${true?`<label class="field" id="w-rep"><span>Opakovat</span><select class="inp" id="f-rep">
       <option value="none">Neopakovat</option><option value="daily">Každý den</option><option value="workdays">Každý pracovní den (po–pá)</option>
       <option value="weekly">Každý týden</option><option value="biweekly">Každý druhý týden</option><option value="monthly">Každý měsíc</option><option value="yearly">Každý rok (narozeniny, výročí)</option></select></label>
       <label class="field hidden" id="w-until"><span>Opakovat do</span><input class="inp" type="date" id="f-until" value="${addDays(d.date,90)}"></label>`:''}
@@ -521,7 +523,9 @@ function openEditor(e, preset){
     s.querySelector('#f-allday').onclick = () => { allDay=!allDay; setAll(); };
     s.querySelector('#f-date').onchange = ev => { const ed=s.querySelector('#f-enddate'); if (ed.value < ev.target.value) ed.value = ev.target.value; };
     s.querySelector('#f-start').onchange = ev => { const en=s.querySelector('#f-end'); if(!en.value || en.value<=ev.target.value){ const [h,mi]=ev.target.value.split(':').map(Number); en.value=pad((h+1)%24)+':'+pad(mi); } };
-    const r = s.querySelector('#f-rep'); if (r) r.onchange = () => { rep=r.value; s.querySelector('#w-until').classList.toggle('hidden', rep==='none'); const u=s.querySelector('#f-until'), dd=s.querySelector('#f-date').value; if (dd) u.value = rep==='yearly' ? addDays(dd, 3652) : addDays(dd, 90); if (rep==='yearly' && !allDay){ allDay=true; setAll(); } };
+    const r = s.querySelector('#f-rep'); if (r){ r.value = rep; s.querySelector('#w-until').classList.toggle('hidden', rep==='none'); if (lastKey) s.querySelector('#f-until').value = lastKey; }
+    const sc = s.querySelector('#f-scope'); if (sc) sc.onclick = ev => { const b=ev.target.closest('button'); if(!b) return; scope=b.dataset.s; sc.querySelectorAll('button').forEach(x=>{ x.classList.toggle('on',x===b); x.style.background = x===b?'var(--accent)':''; }); s.querySelector('#w-rep').classList.toggle('hidden', scope==='one'); s.querySelector('#w-until').classList.toggle('hidden', scope==='one' || rep==='none'); };
+    if (r) r.onchange = () => { rep=r.value; s.querySelector('#w-until').classList.toggle('hidden', rep==='none'); const u=s.querySelector('#f-until'), dd=s.querySelector('#f-date').value; if (dd) u.value = rep==='yearly' ? addDays(dd, 3652) : addDays(dd, 90); if (rep==='yearly' && !allDay){ allDay=true; setAll(); } };
     s.querySelector('#f-cancel').onclick = () => e ? openDetail(e) : closeSheet();
     if (isNew && !d.title) setTimeout(()=>s.querySelector('#f-title').focus(), 300);
     s.querySelector('#f-save').onclick = async () => {
@@ -538,7 +542,13 @@ function openEditor(e, preset){
       };
       const btn = s.querySelector('#f-save'); btn.disabled = true; btn.textContent = 'Ukládám…';
       let error;
-      if (isNew){
+      const whole = !isNew && scope==='all' && (e.series_id || rep!=='none');
+      if (whole){
+        const dr = e.series_id ? await sb.from('events').delete().eq('series_id', e.series_id).gte('starts_at', e.starts_at) : await sb.from('events').delete().eq('id', e.id);
+        if (dr.error){ btn.disabled=false; btn.textContent='Uložit'; toast('Uložení se nepovedlo'); return; }
+        events = events.filter(x => e.series_id ? !(x.series_id===e.series_id && x.starts_at>=e.starts_at) : x.id!==e.id);
+      }
+      if (isNew || whole){
         const dates = repeatDates(date, rep, rep==='none' ? date : s.querySelector('#f-until').value);
         const sid = dates.length > 1 ? crypto.randomUUID() : null;
         const rows = dates.map(k => Object.assign(mk(k), { series_id: sid }));
@@ -554,6 +564,13 @@ function openEditor(e, preset){
       render(); closeSheet(); toast(isNew ? 'Přidáno' : 'Uloženo');
     };
   });
+}
+function inferRep(e){
+  const ks = events.filter(x=>x.series_id===e.series_id).map(evStartKey).sort();
+  if (ks.length < 2) return 'none';
+  const g = Math.round((parseKey(ks[1]) - parseKey(ks[0]))/864e5);
+  if (g >= 360) return 'yearly'; if (g >= 28) return 'monthly'; if (g === 14) return 'biweekly'; if (g === 7) return 'weekly';
+  return ks.some((k,i)=> i && Math.round((parseKey(k)-parseKey(ks[i-1]))/864e5)===3) ? 'workdays' : 'daily';
 }
 function repeatDates(start, rep, until){
   if (rep==='none' || !until || until < start) return [start];
