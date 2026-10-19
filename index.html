@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rodinný kalendář</title>
+<meta name="theme-color" content="#F6F3EE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15171C" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Kalendář">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#F6F3EE; --card:#FFFFFF; --card2:#FBF9F6; --ink:#1E2230; --muted:#737887; --line:#E8E3DB;
+  --accent:#D9653B; --accent-ink:#fff; --accent-soft:#F8E3D9; --danger:#C8423A; --shadow:0 1px 2px rgba(30,34,48,.05),0 6px 20px rgba(30,34,48,.06);
+  --radius:18px;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#15171C; --card:#1F222A; --card2:#252932; --ink:#EEF0F4; --muted:#9AA0AE; --line:#2E323C;
+    --accent:#F07A4F; --accent-soft:#3A2820; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25); }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,-apple-system,sans-serif;font-size:16px;-webkit-font-smoothing:antialiased}
+body{min-height:100dvh;overscroll-behavior-y:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+input,select,textarea{font:inherit;color:var(--ink)}
+.hidden{display:none!important}
+.serif{font-family:Fraunces,Georgia,serif}
+
+/* ---------- screens ---------- */
+.center{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px calc(32px + env(safe-area-inset-bottom));text-align:center;gap:18px}
+.logo{width:88px;height:88px;border-radius:24px;box-shadow:var(--shadow)}
+.center h1{font-family:Fraunces,serif;font-weight:650;font-size:32px;margin:6px 0 0;letter-spacing:-.5px}
+.center p{color:var(--muted);margin:0;max-width:320px;line-height:1.5}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:52px;padding:0 22px;border-radius:16px;font-weight:700;background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.btn.wide{width:100%;max-width:340px}
+.btn.danger{background:transparent;color:var(--danger)}
+.claim-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:340px}
+.claim-grid button{background:var(--card);border-radius:18px;padding:18px 10px;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;gap:8px;font-weight:700}
+
+/* ---------- app shell ---------- */
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 16px 8px}
+.top-row{display:flex;align-items:center;gap:10px}
+.top h1{font-family:Fraunces,serif;font-weight:650;font-size:28px;margin:0;letter-spacing:-.4px;flex:1;text-transform:capitalize}
+.icon-btn{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--card);box-shadow:var(--shadow)}
+.icon-btn svg{width:21px;height:21px}
+.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px}
+.seg{display:flex;background:var(--card);border-radius:14px;padding:4px;box-shadow:var(--shadow);margin-top:12px}
+.seg button{flex:1;height:36px;border-radius:10px;font-weight:700;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--ink);color:var(--bg)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 16px 4px;margin:0 -16px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:34px;padding:0 14px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:14px;color:var(--muted)}
+.chip .dot{width:9px;height:9px;border-radius:50%}
+.chip.on{background:var(--ink);color:var(--bg)}
+
+/* week strip */
+.week{display:grid;grid-template-columns:28px repeat(7,1fr) 28px;align-items:center;gap:2px;margin-top:10px}
+.week .nav{height:56px;display:grid;place-items:center;color:var(--muted)}
+.wd{height:60px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.wd small{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.wd b{font-size:18px;font-weight:800}
+.wd .dots{display:flex;gap:2px;height:5px}
+.wd .dots i{width:5px;height:5px;border-radius:50%}
+.wd.today b{color:var(--accent)}
+.wd.sel{background:var(--ink)} .wd.sel small,.wd.sel b{color:var(--bg)}
+
+main{padding:4px 16px calc(120px + env(safe-area-inset-bottom))}
+.day{margin-top:18px}
+.day-h{display:flex;align-items:baseline;gap:8px;margin:0 4px 8px}
+.day-h h2{font-family:Fraunces,serif;font-weight:650;font-size:20px;margin:0;letter-spacing:-.2px}
+.day-h span{color:var(--muted);font-size:14px;font-weight:600}
+.day-h.today h2{color:var(--accent)}
+.ev{display:flex;gap:12px;align-items:stretch;background:var(--card);border-radius:var(--radius);padding:13px 14px;box-shadow:var(--shadow);margin-bottom:8px;width:100%;text-align:left}
+.ev .bar{width:4px;border-radius:4px;flex:none}
+.ev .time{width:50px;flex:none;font-weight:800;font-size:15px;line-height:1.25}
+.ev .time small{display:block;color:var(--muted);font-weight:600;font-size:12.5px}
+.ev .body{flex:1;min-width:0}
+.ev .title{font-weight:700;font-size:16px;line-height:1.3;word-wrap:break-word}
+.ev .meta{display:flex;gap:8px;align-items:center;margin-top:4px;color:var(--muted);font-size:13px;font-weight:600}
+.tag{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:12.5px;font-weight:700}
+.empty{text-align:center;color:var(--muted);padding:48px 20px;line-height:1.6}
+.empty b{display:block;color:var(--ink);font-size:17px;margin-bottom:4px}
+.more{display:block;margin:20px auto 0;color:var(--muted);font-weight:700;font-size:14px;padding:10px 16px}
+
+/* month */
+.month-h{display:flex;align-items:center;justify-content:space-between;margin:10px 4px 10px}
+.month-h h2{font-family:Fraunces,serif;font-weight:650;font-size:22px;margin:0;text-transform:capitalize}
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;background:var(--card);border-radius:var(--radius);padding:10px 8px;box-shadow:var(--shadow)}
+.mgrid .dn{text-align:center;font-size:11px;font-weight:800;color:var(--muted);padding:2px 0 6px;text-transform:uppercase}
+.mc{aspect-ratio:1/1.05;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:6px;gap:4px;font-weight:700;font-size:15px}
+.mc.out{color:var(--muted);opacity:.45}
+.mc.today{color:var(--accent)}
+.mc.sel{background:var(--ink);color:var(--bg)}
+.mc .dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;max-width:30px}
+.mc .dots i{width:6px;height:6px;border-radius:50%}
+
+/* floating buttons */
+.fabs{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));display:flex;gap:12px;z-index:6}
+.fab{width:60px;height:60px;border-radius:20px;display:grid;place-items:center;box-shadow:0 8px 24px rgba(217,101,59,.35)}
+.fab.main{background:var(--accent);color:#fff}
+.fab.mic{background:var(--ink);color:var(--bg);box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.fab svg{width:26px;height:26px}
+
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(10,12,18,.42);z-index:20;opacity:0;transition:opacity .2s}
+.scrim.show{opacity:1}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--bg);border-radius:26px 26px 0 0;max-height:92dvh;overflow:auto;padding:10px 18px calc(22px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .25s cubic-bezier(.2,.8,.2,1);max-width:640px;margin:0 auto}
+.sheet.show{transform:none}
+.grab{width:40px;height:5px;border-radius:5px;background:var(--line);margin:0 auto 12px}
+.sheet h3{font-family:Fraunces,serif;font-weight:650;font-size:24px;margin:4px 0 14px;letter-spacing:-.3px}
+.field{display:block;margin-bottom:14px}
+.field>span{display:block;font-size:13px;font-weight:700;color:var(--muted);margin:0 2px 6px}
+.inp{width:100%;height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);padding:0 14px;outline:none;font-size:16px}
+textarea.inp{height:84px;padding:12px 14px;resize:none}
+.inp:focus{border-color:var(--accent)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.toggle{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:14px;border:1.5px solid var(--line);height:50px;padding:0 14px;margin-bottom:14px;font-weight:600}
+.sw{width:46px;height:28px;border-radius:999px;background:var(--line);position:relative;transition:.2s;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw.on{background:var(--accent)} .sw.on::after{left:21px}
+.who{display:flex;gap:8px;flex-wrap:wrap}
+.who button{height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);font-weight:700;font-size:14px;display:inline-flex;align-items:center;gap:7px}
+.who button .dot{width:10px;height:10px;border-radius:50%}
+.who button.on{border-color:transparent;color:#fff}
+.actions{display:flex;gap:10px;margin-top:6px}
+.actions .btn{flex:1}
+.detail-title{font-family:Fraunces,serif;font-weight:650;font-size:26px;margin:4px 0 8px;line-height:1.2}
+.detail-row{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);font-weight:600}
+.detail-row svg{width:20px;height:20px;color:var(--muted);flex:none}
+.note{white-space:pre-wrap;color:var(--ink);line-height:1.5}
+
+/* voice */
+.listen{display:flex;flex-direction:column;align-items:center;gap:12px;padding:10px 0 14px}
+.orb{width:84px;height:84px;border-radius:50%;background:var(--accent);display:grid;place-items:center;color:#fff;position:relative}
+.orb svg{width:34px;height:34px}
+.orb.on::before,.orb.on::after{content:"";position:absolute;inset:-10px;border-radius:50%;border:3px solid var(--accent);opacity:.5;animation:pulse 1.4s infinite}
+.orb.on::after{animation-delay:.7s}
+@keyframes pulse{from{transform:scale(.85);opacity:.6}to{transform:scale(1.35);opacity:0}}
+.listen p{margin:0;color:var(--muted);font-weight:600;text-align:center}
+.preview{background:var(--card);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin:4px 0 14px}
+.preview .pt{font-weight:800;font-size:17px}
+.preview .pm{color:var(--muted);font-weight:600;font-size:14px;margin-top:4px}
+.hint{font-size:13px;color:var(--muted);line-height:1.5;margin:-4px 2px 14px}
+
+/* search */
+.search-top{display:flex;gap:10px;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;position:sticky;top:0;background:var(--bg);z-index:5}
+.search-top .inp{flex:1}
+.res-date{font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:3px}
+
+/* settings */
+.mem{background:var(--card);border-radius:16px;padding:12px;box-shadow:var(--shadow);margin-bottom:10px}
+.mem .r{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.mem .inp{height:44px}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatches button{width:28px;height:28px;border-radius:50%;border:3px solid transparent}
+.swatches button.on{border-color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:700;font-size:14px;opacity:0;transition:.25s;z-index:40;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%)}
+@media (min-width:700px){ main,.top,.search-top{max-width:680px;margin-left:auto;margin-right:auto} }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="scr-loading" class="center"><img class="logo" src="icon.svg" alt=""></div>
+
+<!-- Login -->
+<div id="scr-login" class="center hidden">
+  <img class="logo" src="icon.svg" alt="">
+  <h1>Rodinný kalendář</h1>
+  <p>Zubař, práce, kroužky i dovolená — všechno na jednom místě pro celou rodinu.</p>
+  <button class="btn wide" id="btn-google" style="margin-top:10px">
+    <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.2-.1-2.3-.4-3.5z"/></svg>
+    Přihlásit se přes Google
+  </button>
+</div>
+
+<!-- Claim -->
+<div id="scr-claim" class="center hidden">
+  <h1>Kdo jste?</h1>
+  <p>Jste první, kdo se přihlásil. Vyberte si svůj profil — ostatním pak v nastavení přidáte jejich e-maily.</p>
+  <div class="claim-grid" id="claim-grid"></div>
+</div>
+
+<!-- No access -->
+<div id="scr-noaccess" class="center hidden">
+  <h1>Ještě nemáte přístup</h1>
+  <p id="noaccess-text"></p>
+  <button class="btn ghost wide" id="btn-retry">Zkusit znovu</button>
+  <button class="btn danger" id="btn-logout2">Odhlásit se</button>
+</div>
+
+<!-- App -->
+<div id="scr-app" class="hidden">
+  <div class="top">
+    <div class="top-row">
+      <h1 id="hdr-title">Kalendář</h1>
+      <button class="icon-btn" id="btn-search" aria-label="Hledat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <button class="avatar" id="btn-settings" aria-label="Nastavení"></button>
+    </div>
+    <div class="seg"><button data-view="list" class="on">Přehled</button><button data-view="month">Měsíc</button></div>
+    <div class="chips" id="chips"></div>
+    <div class="week" id="week"></div>
+  </div>
+  <main id="main"></main>
+  <div class="fabs">
+    <button class="fab mic" id="btn-voice" aria-label="Přidat hlasem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <button class="fab main" id="btn-add" aria-label="Přidat událost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  </div>
+</div>
+
+<!-- Search screen -->
+<div id="scr-search" class="hidden">
+  <div class="search-top">
+    <input class="inp" id="search-inp" type="search" placeholder="Hledat — zubař, práce, Michal…" autocomplete="off">
+    <button class="icon-btn" id="btn-search-close" aria-label="Zavřít"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <main id="search-res"></main>
+</div>
+
+<div class="scrim hidden" id="scrim"></div>
+<div class="sheet" id="sheet"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= config ================= */
+const SB_URL = 'https://bnckyiveqebzzzxuoluj.supabase.co';
+const SB_KEY = 'sb_publishable_9-08pVFy82_mNy3rRVh-6w_gUZwOe3I';
+const sb = supabase.createClient(SB_URL, SB_KEY, {
+  auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+});
+const VAPID_PUBLIC = 'BHCBQNwlGdlXTPnxuHqaecz4Cvj7c7G0BbUDdspDCfL2AbKt_Z-SQZ6E_ZBLv5PQXAaVPulIIRz-S4PU5fIsOtI';
+const COLORS = ['#3B6FD8','#D9487A','#2E9E6A','#E08A1E','#8A5CD6','#0E9AA7','#C8423A','#6B7280'];
+
+/* ================= state ================= */
+let user = null, me = null, members = [], events = [], booted = false;
+let view = 'list', filter = 'all', selDay = todayKey(), monthCursor = firstOfMonth(new Date()), showPast = false, rangeDays = 60;
+
+/* ================= utils ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function pad(n){ return String(n).padStart(2,'0'); }
+function keyOf(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function todayKey(){ return keyOf(new Date()); }
+function parseKey(k){ const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); }
+function addDays(k,n){ const d=parseKey(k); d.setDate(d.getDate()+n); return keyOf(d); }
+function firstOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+function hm(d){ return pad(d.getHours())+':'+pad(d.getMinutes()); }
+function deacc(s){ return s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function norm(s){ return deacc(String(s||'').normalize('NFC')).toLowerCase(); }
+const fmtLong = new Intl.DateTimeFormat('cs-CZ',{weekday:'long', day:'numeric', month:'long'});
+const fmtDM = new Intl.DateTimeFormat('cs-CZ',{day:'numeric', month:'long'});
+const fmtMonth = new Intl.DateTimeFormat('cs-CZ',{month:'long', year:'numeric'});
+const fmtWd = new Intl.DateTimeFormat('cs-CZ',{weekday:'short'});
+function dayLabel(k){
+  const t = todayKey();
+  if (k===t) return ['Dnes', fmtDM.format(parseKey(k))];
+  if (k===addDays(t,1)) return ['Zítra', fmtLong.format(parseKey(k))];
+  if (k===addDays(t,-1)) return ['Včera', fmtLong.format(parseKey(k))];
+  const s = fmtLong.format(parseKey(k)); const i = s.indexOf(' ');
+  return [cap(s.slice(0,i).replace(',','')), s.slice(i+1)];
+}
+const cap = s => s ? s[0].toUpperCase()+s.slice(1) : s;
+function memberOf(id){ return members.find(m=>m.id===id); }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2400); }
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+function show(id){ ['loading','login','claim','noaccess','app','search'].forEach(s=>$('#scr-'+s).classList.toggle('hidden', s!==id)); }
+
+/* event day span */
+function evStartKey(e){ return keyOf(new Date(e.starts_at)); }
+function evEndKey(e){ return e.all_day && e.ends_at ? keyOf(new Date(e.ends_at)) : evStartKey(e); }
+function eventsOn(k){
+  return events.filter(e => (filter==='all' || e.member_id===filter || (filter!=='all' && !e.member_id)) && evStartKey(e)<=k && evEndKey(e)>=k)
+    .sort((a,b)=> (b.all_day-a.all_day) || (new Date(a.starts_at)-new Date(b.starts_at)));
+}
+
+/* ================= auth & boot ================= */
+$('#btn-google').onclick = async () => {
+  const { error } = await sb.auth.signInWithOAuth({ provider:'google',
+    options:{ redirectTo: location.origin + location.pathname, queryParams:{ prompt:'select_account' } } });
+  if (error) toast('Přihlášení se nepovedlo: ' + error.message);
+};
+async function logout(){ await sb.auth.signOut(); try{ localStorage.removeItem('rk_cache'); }catch(e){} location.replace(location.pathname); }
+$('#btn-logout2').onclick = logout;
+$('#btn-retry').onclick = () => location.reload();
+
+async function boot(){
+  if (booted) return; booted = true;
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session){ booted=false; show('login'); return; }
+  user = session.user;
+  if (location.search.includes('code=')) history.replaceState(null,'',location.pathname);
+
+  const cache = lsGet('rk_cache');
+  if (cache && cache.uid === user.id){ members = cache.members; events = cache.events.map(fixEv); me = members.find(m=>sameMail(m.email,user.email)); if (me){ show('app'); render(); } }
+
+  const { data:mem, error } = await sb.from('members').select('*').order('position');
+  if (error){ if(!me) { show('noaccess'); $('#noaccess-text').textContent='Nepodařilo se připojit. Zkontrolujte internet.'; } return; }
+  members = mem || [];
+  me = members.find(m=>sameMail(m.email,user.email));
+  if (!me){
+    const { data:open } = await sb.rpc('family_open');
+    if (open){ showClaim(); return; }
+    $('#noaccess-text').innerHTML = 'Jste přihlášeni jako <b>'+esc(user.email)+'</b>. Požádejte někoho z rodiny, ať tento e-mail přidá v aplikaci v Nastavení.';
+    show('noaccess'); return;
+  }
+  show('app'); render();
+  await loadEvents();
+  subscribe();
+}
+function sameMail(a,b){ return a && b && a.toLowerCase()===b.toLowerCase(); }
+function fixEv(e){ return e; }
+
+function showClaim(){
+  $('#claim-grid').innerHTML = members.map(m=>`<button data-id="${m.id}"><span class="avatar" style="background:${m.color}">${esc(m.name[0])}</span>${esc(m.name)}</button>`).join('');
+  $('#claim-grid').onclick = async ev => {
+    const b = ev.target.closest('button'); if(!b) return;
+    const { data, error } = await sb.rpc('claim_member', { p_member: b.dataset.id });
+    if (error || !data){ toast('Nepovedlo se, zkuste to znovu.'); return; }
+    booted=false; boot();
+  };
+  show('claim');
+}
+
+async function loadEvents(){
+  const { data, error } = await sb.from('events').select('*').order('starts_at').limit(10000);
+  if (error){ toast('Nepodařilo se načíst události'); return; }
+  events = data || []; saveCache(); render();
+}
+function saveCache(){ lsSet('rk_cache', { uid:user.id, members, events }); }
+let channel;
+function subscribe(){
+  channel = sb.channel('events').on('postgres_changes', { event:'*', schema:'public', table:'events' }, p => {
+    if (p.eventType==='DELETE') events = events.filter(e=>e.id!==p.old.id);
+    else { events = events.filter(e=>e.id!==p.new.id); events.push(p.new); events.sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)); }
+    saveCache(); render(); if (!$('#scr-search').classList.contains('hidden')) runSearch();
+  }).subscribe();
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me) loadEvents(); });
+sb.auth.onAuthStateChange((evt) => { if (evt==='SIGNED_IN' && !booted) boot(); });
+
+/* ================= render ================= */
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+  view = b.dataset.view; document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on', x===b));
+  if (view==='month') monthCursor = firstOfMonth(parseKey(selDay));
+  render();
+});
+function render(){
+  if (!me) return;
+  const av = $('#btn-settings'); av.style.background = me.color; av.textContent = me.name[0];
+  $('#hdr-title').textContent = view==='list' ? 'Kalendář' : fmtMonth.format(monthCursor).split(' ')[0];
+  renderChips();
+  $('#week').classList.toggle('hidden', view!=='list');
+  if (view==='list'){ renderWeek(); renderList(); } else renderMonth();
+}
+function renderChips(){
+  const c = $('#chips');
+  c.innerHTML = `<button class="chip ${filter==='all'?'on':''}" data-f="all">Všichni</button>` +
+    members.map(m=>`<button class="chip ${filter===m.id?'on':''}" data-f="${m.id}"><span class="dot" style="background:${m.color}"></span>${esc(m.name)}</button>`).join('');
+  c.onclick = e => { const b=e.target.closest('.chip'); if(!b) return; filter=b.dataset.f; render(); };
+}
+function weekStart(k){ const d=parseKey(k); const wd=(d.getDay()+6)%7; d.setDate(d.getDate()-wd); return keyOf(d); }
+function dotsFor(k, max){
+  const ev = eventsOn(k); const cols = [];
+  ev.forEach(e=>{ const c = (memberOf(e.member_id)||{}).color || 'var(--accent)'; if(!cols.includes(c)) cols.push(c); });
+  return cols.slice(0,max).map(c=>`<i style="background:${c}"></i>`).join('');
+}
+function renderWeek(){
+  const ws = weekStart(selDay), t = todayKey(); let h = `<button class="nav" data-w="-7">‹</button>`;
+  for (let i=0;i<7;i++){ const k=addDays(ws,i); const d=parseKey(k);
+    h += `<button class="wd ${k===t?'today':''} ${k===selDay?'sel':''}" data-k="${k}"><small>${fmtWd.format(d).replace('.','')}</small><b>${d.getDate()}</b><span class="dots">${dotsFor(k,3)}</span></button>`; }
+  h += `<button class="nav" data-w="7">›</button>`;
+  const w=$('#week'); w.innerHTML=h;
+  w.onclick = e => { const b=e.target.closest('button'); if(!b) return;
+    if (b.dataset.w){ selDay = addDays(selDay, +b.dataset.w); } else selDay = b.dataset.k;
+    showPast=false; render(); window.scrollTo({top:0}); };
+}
+function evCard(e, withDate){
+  const m = memberOf(e.member_id); const s = new Date(e.starts_at); const en = e.ends_at ? new Date(e.ends_at) : null;
+  const time = e.all_day ? `<div class="time" style="font-size:13px">celý<br>den</div>` : `<div class="time">${hm(s)}${en?`<small>${hm(en)}</small>`:''}</div>`;
+  const tag = m ? `<span class="tag" style="background:${m.color}22;color:${m.color}">${esc(m.name)}</span>` : `<span class="tag" style="background:var(--accent-soft);color:var(--accent)">Celá rodina</span>`;
+  const rep = e.series_id ? `<span title="Opakuje se">↻</span>` : '';
+  return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${m?m.color:'var(--accent)'}"></span>${time}<div class="body">${withDate?`<div class="res-date">${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${esc(e.title)}</div><div class="meta">${tag}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
+}
+function renderList(){
+  const main = $('#main'); let h = '';
+  const start = showPast ? addDays(selDay,-30) : selDay;
+  let shown = 0;
+  if (!showPast) h += `<button class="more" id="btn-past" style="margin-top:4px">Zobrazit předchozí dny</button>`;
+  for (let i=0, k=start; i < rangeDays + (showPast?30:0); i++, k=addDays(k,1)){
+    const ev = eventsOn(k);
+    if (!ev.length && k!==selDay) continue;
+    const [a,b] = dayLabel(k);
+    h += `<section class="day" id="d-${k}"><div class="day-h ${k===todayKey()?'today':''}"><h2>${a}</h2><span>${b}</span></div>`;
+    h += ev.length ? ev.map(e=>evCard(e)).join('') : `<div class="empty" style="padding:18px"><b>Volno</b>Na tento den nic není.</div>`;
+    h += `</section>`; shown += ev.length;
+  }
+  if (!shown && !events.length) h += `<div class="empty"><b>Zatím prázdno</b>Přidejte první událost tlačítkem + nebo ji nadiktujte mikrofonem.</div>`;
+  h += `<button class="more" id="btn-more">Načíst další týdny</button>`;
+  main.innerHTML = h;
+  $('#btn-more').onclick = () => { rangeDays += 60; renderList(); };
+  const bp = $('#btn-past'); if (bp) bp.onclick = () => { showPast = true; renderList(); const el=document.getElementById('d-'+selDay); if(el) el.scrollIntoView(); };
+}
+function renderMonth(){
+  const main = $('#main'), t = todayKey();
+  const y = monthCursor.getFullYear(), mo = monthCursor.getMonth();
+  let k = weekStart(keyOf(monthCursor));
+  let h = `<div class="month-h"><button class="icon-btn" data-m="-1">‹</button><h2>${fmtMonth.format(monthCursor)}</h2><button class="icon-btn" data-m="1">›</button></div><div class="mgrid">`;
+  ['po','út','st','čt','pá','so','ne'].forEach(d=>h+=`<div class="dn">${d}</div>`);
+  for (let i=0;i<42;i++, k=addDays(k,1)){
+    const d = parseKey(k); if (i===35 && d.getMonth()!==mo) break;
+    h += `<button class="mc ${d.getMonth()!==mo?'out':''} ${k===t?'today':''} ${k===selDay?'sel':''}" data-k="${k}">${d.getDate()}<span class="dots">${dotsFor(k,4)}</span></button>`;
+  }
+  h += `</div>`;
+  const ev = eventsOn(selDay); const [a,b] = dayLabel(selDay);
+  h += `<section class="day"><div class="day-h"><h2>${a}</h2><span>${b}</span></div>${ev.length?ev.map(e=>evCard(e)).join(''):'<div class="empty" style="padding:18px"><b>Volno</b>Na tento den nic není.</div>'}</section>`;
+  main.innerHTML = h;
+  main.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ monthCursor = new Date(y, mo + +b.dataset.m, 1); render(); });
+  main.querySelector('.mgrid').onclick = e => { const b=e.target.closest('.mc'); if(!b) return; selDay=b.dataset.k; if (parseKey(selDay).getMonth()!==mo) monthCursor=firstOfMonth(parseKey(selDay)); render(); };
+}
+document.addEventListener('click', e => {
+  const c = e.target.closest('.ev'); if (!c) return;
+  const ev = events.find(x=>x.id===c.dataset.id); if (ev) openDetail(ev);
+});
+
+/* ================= sheets ================= */
+function openSheet(html, onOpen){
+  const s=$('#sheet'), sc=$('#scrim');
+  s.innerHTML = `<div class="grab"></div>` + html;
+  sc.classList.remove('hidden'); requestAnimationFrame(()=>{ sc.classList.add('show'); s.classList.add('show'); });
+  onOpen && onOpen(s);
+}
+function closeSheet(){
+  const s=$('#sheet'), sc=$('#scrim'); s.classList.remove('show'); sc.classList.remove('show');
+  stopVoice(); setTimeout(()=>{ sc.classList.add('hidden'); s.innerHTML=''; }, 250);
+}
+$('#scrim').onclick = closeSheet;
+
+const IC = {
+  cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  rep:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 14-5l2 2M20 12a8 8 0 0 1-14 5l-2-2M20 4v5h-5M4 20v-5h5"/></svg>'
+};
+function openDetail(e){
+  const m = memberOf(e.member_id), s = new Date(e.starts_at), en = e.ends_at ? new Date(e.ends_at) : null;
+  const dateTxt = e.all_day ? (evEndKey(e)!==evStartKey(e) ? dayLabel(evStartKey(e)).join(' ')+' – '+dayLabel(evEndKey(e)).join(' ') : dayLabel(evStartKey(e)).join(', ')) : dayLabel(evStartKey(e)).join(', ');
+  const timeTxt = e.all_day ? 'Celý den' : hm(s) + (en ? ' – ' + hm(en) : '');
+  openSheet(`
+    <div class="detail-title">${esc(e.title)}</div>
+    <div class="detail-row">${IC.cal}<span>${esc(dateTxt)}</span></div>
+    <div class="detail-row">${IC.clock}<span>${timeTxt}</span></div>
+    <div class="detail-row">${IC.user}<span>${m?`<span class="tag" style="background:${m.color}22;color:${m.color}">${esc(m.name)}</span>`:'Celá rodina'}</span></div>
+    ${e.series_id?`<div class="detail-row">${IC.rep}<span>Opakovaná událost</span></div>`:''}
+    ${e.note?`<p class="note">${esc(e.note)}</p>`:''}
+    <div class="actions" style="margin-top:18px"><button class="btn ghost" id="d-edit">Upravit</button><button class="btn ghost" id="d-del" style="color:var(--danger)">Smazat</button></div>`,
+  s => {
+    s.querySelector('#d-edit').onclick = () => openEditor(e);
+    s.querySelector('#d-del').onclick = () => confirmDelete(e);
+  });
+}
+function confirmDelete(e){
+  openSheet(`<h3>Smazat „${esc(e.title)}“?</h3>
+    <div style="display:grid;gap:10px">
+      <button class="btn" id="x-one" style="background:var(--danger)">Smazat ${e.series_id?'jen tuto':''}</button>
+      ${e.series_id?`<button class="btn ghost" id="x-fut" style="color:var(--danger)">Smazat tuto i všechny další</button>`:''}
+      <button class="btn ghost" id="x-no">Zpět</button></div>`, s => {
+    s.querySelector('#x-no').onclick = () => openDetail(e);
+    s.querySelector('#x-one').onclick = async () => { const {error}=await sb.from('events').delete().eq('id',e.id); if(error) return toast('Smazání se nepovedlo'); events=events.filter(x=>x.id!==e.id); saveCache(); render(); closeSheet(); toast('Smazáno'); };
+    const f = s.querySelector('#x-fut'); if (f) f.onclick = async () => {
+      const {error}=await sb.from('events').delete().eq('series_id',e.series_id).gte('starts_at',e.starts_at);
+      if(error) return toast('Smazání se nepovedlo');
+      events=events.filter(x=>!(x.series_id===e.series_id && x.starts_at>=e.starts_at)); saveCache(); render(); closeSheet(); toast('Smazáno');
+    };
+  });
+}
+
+/* ---------- editor ---------- */
+function openEditor(e, preset){
+  const isNew = !e;
+  const d = e ? {
+      title:e.title, member_id:e.member_id, date:evStartKey(e), endDate:evEndKey(e), all_day:e.all_day,
+      start: e.all_day?'09:00':hm(new Date(e.starts_at)), end: (!e.all_day && e.ends_at)?hm(new Date(e.ends_at)):'', note:e.note||''
+    } : Object.assign({ title:'', member_id: me.id, date: selDay < todayKey() ? todayKey() : selDay, endDate:null, all_day:false, start:'09:00', end:'10:00', note:'' }, preset||{});
+  if (!d.endDate) d.endDate = d.date;
+  let rep = 'none';
+  openSheet(`
+    <h3>${isNew?'Nová událost':'Upravit událost'}</h3>
+    <label class="field"><span>Co</span><input class="inp" id="f-title" placeholder="Zubař, práce, trénink…" value="${esc(d.title)}" maxlength="200"></label>
+    <div class="field"><span>Kdo</span><div class="who" id="f-who">
+      ${members.map(m=>`<button data-id="${m.id}" data-c="${m.color}"><span class="dot" style="background:${m.color}"></span>${esc(m.name)}</button>`).join('')}
+      <button data-id="" data-c="var(--accent)"><span class="dot" style="background:var(--accent)"></span>Celá rodina</button></div></div>
+    <div class="toggle"><span>Celý den</span><button class="sw" id="f-allday" aria-label="Celý den"></button></div>
+    <div class="row2"><label class="field"><span id="l-date">Datum</span><input class="inp" type="date" id="f-date" value="${d.date}"></label>
+      <label class="field" id="w-enddate"><span>Do</span><input class="inp" type="date" id="f-enddate" value="${d.endDate}"></label></div>
+    <div class="row2" id="w-times"><label class="field"><span>Od</span><input class="inp" type="time" id="f-start" value="${d.start}"></label>
+      <label class="field"><span>Do</span><input class="inp" type="time" id="f-end" value="${d.end}"></label></div>
+    ${isNew?`<label class="field"><span>Opakovat</span><select class="inp" id="f-rep">
+      <option value="none">Neopakovat</option><option value="daily">Každý den</option><option value="workdays">Každý pracovní den (po–pá)</option>
+      <option value="weekly">Každý týden</option><option value="biweekly">Každý druhý týden</option><option value="monthly">Každý měsíc</option><option value="yearly">Každý rok (narozeniny, výročí)</option></select></label>
+      <label class="field hidden" id="w-until"><span>Opakovat do</span><input class="inp" type="date" id="f-until" value="${addDays(d.date,90)}"></label>`:''}
+    <label class="field"><span>Poznámka</span><textarea class="inp" id="f-note" placeholder="Adresa, co vzít s sebou…">${esc(d.note)}</textarea></label>
+    <div class="actions"><button class="btn ghost" id="f-cancel">Zrušit</button><button class="btn" id="f-save">Uložit</button></div>`,
+  s => {
+    let who = d.member_id || '', allDay = d.all_day;
+    const setWho = () => s.querySelectorAll('#f-who button').forEach(b => { const on=b.dataset.id===who; b.classList.toggle('on',on); b.style.background = on ? b.dataset.c : ''; });
+    const setAll = () => { s.querySelector('#f-allday').classList.toggle('on',allDay); s.querySelector('#w-times').classList.toggle('hidden',allDay); s.querySelector('#w-enddate').classList.toggle('hidden',!allDay); s.querySelector('#l-date').textContent = allDay?'Od':'Datum'; };
+    setWho(); setAll();
+    s.querySelector('#f-who').onclick = ev => { const b=ev.target.closest('button'); if(!b) return; who=b.dataset.id; setWho(); };
+    s.querySelector('#f-allday').onclick = () => { allDay=!allDay; setAll(); };
+    s.querySelector('#f-date').onchange = ev => { const ed=s.querySelector('#f-enddate'); if (ed.value < ev.target.value) ed.value = ev.target.value; };
+    s.querySelector('#f-start').onchange = ev => { const en=s.querySelector('#f-end'); if(!en.value || en.value<=ev.target.value){ const [h,mi]=ev.target.value.split(':').map(Number); en.value=pad((h+1)%24)+':'+pad(mi); } };
+    const r = s.querySelector('#f-rep'); if (r) r.onchange = () => { rep=r.value; s.querySelector('#w-until').classList.toggle('hidden', rep==='none'); const u=s.querySelector('#f-until'), dd=s.querySelector('#f-date').value; if (dd) u.value = rep==='yearly' ? addDays(dd, 3652) : addDays(dd, 90); if (rep==='yearly' && !allDay){ allDay=true; setAll(); } };
+    s.querySelector('#f-cancel').onclick = () => e ? openDetail(e) : closeSheet();
+    if (isNew && !d.title) setTimeout(()=>s.querySelector('#f-title').focus(), 300);
+    s.querySelector('#f-save').onclick = async () => {
+      const title = s.querySelector('#f-title').value.trim(); if (!title) { toast('Napište, o co jde'); return; }
+      const date = s.querySelector('#f-date').value; if (!date) { toast('Vyberte datum'); return; }
+      const endDate = s.querySelector('#f-enddate').value || date;
+      const st = s.querySelector('#f-start').value || '09:00', et = s.querySelector('#f-end').value;
+      const note = s.querySelector('#f-note').value.trim() || null;
+      const mk = (dk) => {
+        let starts, ends;
+        if (allDay){ starts = parseKey(dk); const span = Math.max(0, Math.round((parseKey(endDate)-parseKey(date))/864e5)); ends = parseKey(addDays(dk,span)); ends.setHours(23,59); }
+        else { starts = new Date(dk+'T'+st); ends = et ? new Date(dk+'T'+et) : null; if (ends && ends<=starts) ends.setDate(ends.getDate()+1); }
+        return { title, member_id: who || null, all_day: allDay, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, note };
+      };
+      const btn = s.querySelector('#f-save'); btn.disabled = true; btn.textContent = 'Ukládám…';
+      let error;
+      if (isNew){
+        const dates = repeatDates(date, rep, rep==='none' ? date : s.querySelector('#f-until').value);
+        const sid = dates.length > 1 ? crypto.randomUUID() : null;
+        const rows = dates.map(k => Object.assign(mk(k), { series_id: sid }));
+        const res = await sb.from('events').insert(rows).select(); error = res.error;
+        if (!error) { res.data.forEach(n=>{ if(!events.find(x=>x.id===n.id)) events.push(n); }); }
+      } else {
+        const res = await sb.from('events').update(mk(date)).eq('id', e.id).select(); error = res.error;
+        if (!error && res.data[0]) events = events.map(x=>x.id===e.id?res.data[0]:x);
+      }
+      if (error){ btn.disabled=false; btn.textContent='Uložit'; toast('Uložení se nepovedlo'); return; }
+      events.sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)); saveCache();
+      selDay = date; if (view==='month') monthCursor = firstOfMonth(parseKey(date));
+      render(); closeSheet(); toast(isNew ? 'Přidáno' : 'Uloženo');
+    };
+  });
+}
+function repeatDates(start, rep, until){
+  if (rep==='none' || !until || until < start) return [start];
+  const out = []; let k = start, guard = 0, mi = 0; const sd = parseKey(start).getDate();
+  while (k <= until && out.length < 400 && guard++ < 800){
+    const wd = parseKey(k).getDay();
+    if (rep!=='workdays' || (wd>0 && wd<6)) out.push(k);
+    if (rep==='daily' || rep==='workdays') k = addDays(k,1);
+    else if (rep==='weekly') k = addDays(k,7);
+    else if (rep==='biweekly') k = addDays(k,14);
+    else if (rep==='yearly'){ mi++; const d0=parseKey(start); const d=new Date(d0.getFullYear()+mi, d0.getMonth(), 1); d.setDate(Math.min(sd, new Date(d.getFullYear(), d.getMonth()+1, 0).getDate())); k = keyOf(d); }
+    else if (rep==='monthly'){ mi++; const d0=parseKey(start); const d=new Date(d0.getFullYear(), d0.getMonth()+mi, 1); d.setDate(Math.min(sd, new Date(d.getFullYear(), d.getMonth()+1, 0).getDate())); k = keyOf(d); }
+  }
+  return out;
+}
+
+/* ================= Czech voice/text parser ================= */
+const MONTHS = ['ledna','unora','brezna','dubna','kvetna','cervna','cervence','srpna','zari','rijna','listopadu','prosince'];
+const WDAYS = [['nedel'],['pondel'],['uter'],['stred'],['ctvrt'],['pat'],['sobot']];
+const TITLE_MAP = [
+  [/\b(k |ke )?zubar(i|e|em)?\b|\bzubak\b/, 'Zubař'],
+  [/\b(k |ke )?(doktor(ovi|a|em)?|lekar(i|e|em)?)\b/, 'Lékař'],
+  [/\b(do |v |na )?(prace|praci)\b/, 'Práce'],
+  [/\b(ranni|odpoledni|nocni) smen[auye]?\b/, null],
+  [/\bsmen[auye]\b/, 'Směna'],
+  [/\b(na )?trenink\b/, 'Trénink'],
+  [/\b(na )?box\b/, 'Box'],
+  [/\b(na )?dovolen[aou]\b/, 'Dovolená'],
+  [/\b(k |ke )?kader(nici|nice|nik|nikovi)\b/, 'Kadeřník'],
+];
+function parseCz(text){
+  const src = String(text||'').normalize('NFC').trim();
+  let n = norm(src); const cut = []; // spans to remove from title
+  const take = (m, idx=0) => { const st = m.index, en = m.index + m[0].length; cut.push([st,en]); n = n.slice(0,st) + ' '.repeat(en-st) + n.slice(en); };
+  const today = new Date(); today.setHours(0,0,0,0);
+  let date = null, start = null, end = null, allDay = false, member;
+
+  // all day
+  let m = /\b(cely den|celodenne|na cely den)\b/.exec(n); if (m){ allDay = true; take(m); }
+  // explicit date: 3. 11. (2026)
+  m = /\b(\d{1,2})\.\s?(\d{1,2})\.(\s?(\d{4}))?/.exec(n);
+  if (m){ const y = m[4] ? +m[4] : today.getFullYear(); let d = new Date(y, +m[2]-1, +m[1]); if (!m[4] && d < today) d.setFullYear(y+1); date = d; take(m); }
+  // 3. listopadu
+  if (!date){ m = new RegExp('\\b(\\d{1,2})\\.?\\s+('+MONTHS.join('|')+')(\\s+(\\d{4}))?\\b').exec(n);
+    if (m){ const y = m[4] ? +m[4] : today.getFullYear(); let d = new Date(y, MONTHS.indexOf(m[2]), +m[1]); if (!m[4] && d < today) d.setFullYear(y+1); date = d; take(m); } }
+  // relative words
+  if (!date){ m = /\b(dnes|dneska|zitra|pozitri)\b/.exec(n);
+    if (m){ const off = {dnes:0,dneska:0,zitra:1,pozitri:2}[m[1]]; date = new Date(today); date.setDate(date.getDate()+off); take(m); } }
+  if (!date){ m = /\bza\s+(\d+|jeden|dva|tri|ctyri|pet)?\s*(den|dny|dni|tyden|tydny|tydnu|mesic)\b/.exec(n);
+    if (m){ const w = {jeden:1,dva:2,tri:3,ctyri:4,pet:5}; const q = m[1] ? (w[m[1]]||+m[1]) : 1; date = new Date(today);
+      if (m[2].startsWith('t')) date.setDate(date.getDate()+7*q); else if (m[2]==='mesic') date.setMonth(date.getMonth()+q); else date.setDate(date.getDate()+q); take(m); } }
+  // weekday
+  if (!date){ m = /\b(?:(?:v|ve|na|od)\s+)?(?:(pristi|tento|tuto|tenhle|tuhle)\s+)?(pondeli|utery|stred[auy]|ctvrtek|patek|sobot[auy]|nedel[ei])\b/.exec(n);
+    if (m){ const wd = WDAYS.findIndex(a => a.some(p => m[2].startsWith(p))); date = new Date(today);
+      let diff = (wd - today.getDay() + 7) % 7; if (diff===0) diff = 7;
+      if (m[1]==='pristi'){ const monNext = new Date(today); monNext.setDate(today.getDate() + ((8 - today.getDay()) % 7 || 7)); date = new Date(monNext); date.setDate(monNext.getDate() + (wd+6)%7); }
+      else date.setDate(date.getDate()+diff);
+      take(m); } }
+
+  // time range "od 8 do 16", "8-16", "14:30 až 15:30"
+  const HR = '(\\d{1,2})(?:[:.](\\d{2}))?';
+  m = new RegExp('\\b(?:od\\s+)?'+HR+'\\s*(?:hod\\w*\\s*)?(?:do|-|–|az)\\s*'+HR+'(?:\\s*hod\\w*)?\\b').exec(n);
+  if (m && +m[1]<24 && +m[3]<=24){ start=[+m[1], +(m[2]||0)]; end=[+m[3]%24, +(m[4]||0)]; take(m); }
+  if (!start){ m = /\b(?:v|ve|o|od|na|kolem)?\s*(\d{1,2})[:.](\d{2})\b/.exec(n); if (m && +m[1]<24){ start=[+m[1],+m[2]]; take(m); } }
+  if (!start){ m = /\b(?:v|ve|od|kolem)\s+(\d{1,2})(?:\s*hod\w*)?\b/.exec(n); if (m && +m[1]<24){ start=[+m[1],0]; take(m); } }
+  if (!start){ m = /\b(\d{1,2})\s*hod\w*\b/.exec(n); if (m && +m[1]<24){ start=[+m[1],0]; take(m); } }
+  if (!start){ m = /\b(?:v|ve|o)\s+pul\s+(\w+)\b/.exec(n); const W={jedne:1,druhe:2,treti:3,ctvrte:4,pate:5,seste:6,sedme:7,osme:8,devate:9,desate:10,jedenacte:11,dvanacte:12};
+    if (m && W[m[1]]){ start=[W[m[1]]-1,30]; take(m); } }
+  m = /\b(rano|dopoledne|odpoledne|vecer|v noci|v poledne)\b/.exec(n);
+  if (m){ if (start && (m[1]==='odpoledne'||m[1]==='vecer') && start[0]<12){ start[0]+=12; if(end && end[0]<12) end[0]+=12; }
+          if (!start){ start = {rano:[8,0],dopoledne:[10,0],odpoledne:[14,0],vecer:[18,0],'v noci':[22,0],'v poledne':[12,0]}[m[1]]; } take(m); }
+  // people say "v 3" meaning 15:00
+  if (start && !m && start[0]>=1 && start[0]<=5 && (!end || end[0]<=7) && !/\d[:.]\d/.test(src)) { start[0]+=12; if (end) end[0]+=12; }
+
+  // member
+  m = /\b(cela rodina|celou rodinu|vsichni|vsechny|rodina|spolecne)\b/.exec(n);
+  if (m){ member = null; take(m); }
+  else {
+    for (const mb of members){
+      let st = norm(mb.name).trim(); if (!st) continue; if (st.length > 3) st = st.slice(0,-1);
+      const re = new RegExp('\\b'+st.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\w*\\b','g'); let r;
+      while ((r = re.exec(n))){ if (!['ma','mam','mame','mate','maji','tak','tam'].includes(r[0])) break; }
+      if (r){ re.lastIndex = 0; member = mb.id; take(r); break; }
+    }
+    if (member===undefined){ m = /\b(ja|ma|mam|mne|mi)\b/.exec(n); if (m && me) { member = me.id; } }
+  }
+
+  // title
+  let title = '';
+  for (const [re, t] of TITLE_MAP){ const r = re.exec(n); if (r && t){ title = t; } }
+  let rest = src.split('');
+  cut.forEach(([a,b])=>{ for (let i=a;i<b;i++) rest[i]=' '; });
+  rest = rest.join('');
+  rest = rest.replace(/\s+/g,' ').trim();
+  const FILL = /^(?:(?:pridej|pridat|zapis|zapiste|zapsat|napis|ma|mam|mame|maji|bude|budu|budeme|jde|jdu|jdeme|pujde|pujdu|je|a|tak|prosim|udalost|v|ve|na|od|do|o|k|ke)\s+)+/;
+  const FILL_END = /(?:\s+(?:v|ve|na|od|do|o|k|ke|a|v kalendari|do kalendare|prosim))+$/;
+  let nr = norm(rest);
+  let lm = FILL.exec(nr); if (lm){ rest = rest.slice(lm[0].length); nr = nr.slice(lm[0].length); }
+  lm = FILL_END.exec(nr); if (lm){ rest = rest.slice(0, rest.length - lm[0].length); }
+  rest = rest.replace(/[,.]+$/,'').trim();
+  if (!title) title = cap(rest);
+  else if (rest && norm(rest).replace(/\s/g,'').length > 0 && !TITLE_MAP.some(([re])=>re.test(norm(rest)))) title = title + ' – ' + rest;
+
+  const out = { title };
+  if (date) out.date = keyOf(date);
+  if (member !== undefined) out.member_id = member;
+  if (allDay) out.all_day = true;
+  if (start){ out.start = pad(start[0])+':'+pad(start[1]);
+    out.end = end ? pad(end[0])+':'+pad(end[1]) : pad((start[0]+1)%24)+':'+pad(start[1]); }
+  return out;
+}
+
+/* ---------- voice / quick add ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+function stopVoice(){ if (rec){ try{ rec.onend=null; rec.abort(); }catch(e){} rec=null; } }
+function describe(p){
+  const m = p.member_id ? memberOf(p.member_id) : null;
+  const when = (p.date ? dayLabel(p.date).join(' ') : dayLabel(selDay < todayKey() ? todayKey() : selDay).join(' ')) + (p.all_day ? ', celý den' : p.start ? ', ' + p.start + (p.end ? '–'+p.end : '') : '');
+  return `<div class="pt">${esc(p.title || '…')}</div><div class="pm">${esc(when)} · ${p.member_id===null?'Celá rodina':esc(m ? m.name : me.name)}</div>`;
+}
+function openQuick(listen){
+  openSheet(`
+    <h3>Přidat rychle</h3>
+    <div class="listen ${listen&&SR?'':'hidden'}" id="q-listen"><button class="orb" id="q-orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><p id="q-status">Poslouchám…</p></div>
+    <label class="field"><input class="inp" id="q-text" placeholder="Např. Michal zubař ve čtvrtek v 15:30" autocomplete="off"></label>
+    <div class="hint" id="q-hint">${SR ? 'Mluvte nebo pište přirozeně: „Máma v práci zítra od 8 do 16“, „dovolená 3. 11. celý den“.' : 'Klepněte do pole a použijte mikrofon na klávesnici. Pište přirozeně: „Máma v práci zítra od 8 do 16“.'}</div>
+    <div class="preview hidden" id="q-prev"></div>
+    <div class="actions"><button class="btn ghost" id="q-cancel">Zrušit</button><button class="btn" id="q-go">Pokračovat</button></div>`,
+  s => {
+    const inp = s.querySelector('#q-text'), prev = s.querySelector('#q-prev');
+    const upd = () => { const v=inp.value.trim(); prev.classList.toggle('hidden', !v); if (v) prev.innerHTML = describe(parseCz(v)); };
+    inp.oninput = upd;
+    inp.onkeydown = e => { if (e.key==='Enter') s.querySelector('#q-go').click(); };
+    s.querySelector('#q-cancel').onclick = closeSheet;
+    s.querySelector('#q-go').onclick = () => { stopVoice(); const p = parseCz(inp.value); openEditor(null, p); };
+    s.querySelector('#q-orb').onclick = () => { if (rec) stopVoice(), s.querySelector('#q-orb').classList.remove('on'), s.querySelector('#q-status').textContent='Klepněte a mluvte'; else startRec(s); };
+    if (listen && SR) startRec(s); else setTimeout(()=>inp.focus(), 300);
+    function startRec(s){
+      const orb = s.querySelector('#q-orb'), st = s.querySelector('#q-status');
+      try {
+        rec = new SR(); rec.lang = 'cs-CZ'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+        rec.onresult = ev => { let t=''; for (const r of ev.results) t += r[0].transcript; inp.value = t; upd(); };
+        rec.onerror = ev => { st.textContent = ev.error==='not-allowed' ? 'Mikrofon není povolený — napište to prosím.' : 'Nerozuměl jsem, zkuste znovu.'; orb.classList.remove('on'); };
+        rec.onend = () => { orb.classList.remove('on'); rec = null; if (inp.value.trim()){ st.textContent = 'Zkontrolujte a pokračujte'; } else if (!/není/.test(st.textContent)) st.textContent = 'Klepněte a mluvte'; };
+        rec.start(); orb.classList.add('on'); st.textContent = 'Poslouchám…';
+      } catch(e){ st.textContent = 'Hlas teď nejde — napište to prosím.'; orb.classList.remove('on'); }
+    }
+  });
+}
+$('#btn-add').onclick = () => openEditor(null);
+$('#btn-voice').onclick = () => openQuick(true);
+
+/* ================= search ================= */
+$('#btn-search').onclick = () => { show('search'); $('#search-inp').value=''; runSearch(); setTimeout(()=>$('#search-inp').focus(),50); };
+$('#btn-search-close').onclick = () => { show('app'); render(); };
+$('#search-inp').oninput = runSearch;
+function runSearch(){
+  const q = norm($('#search-inp').value).trim(), box = $('#search-res');
+  if (!q){ box.innerHTML = `<div class="empty"><b>Co hledáte?</b>Hledá v názvech, poznámkách i jménech.</div>`; return; }
+  const words = q.split(/\s+/);
+  const t = todayKey();
+  const res = events.filter(e => { const m = memberOf(e.member_id); const hay = norm(e.title+' '+(e.note||'')+' '+(m?m.name:'cela rodina')); return words.every(w=>hay.includes(w)); });
+  const fut = res.filter(e=>evEndKey(e)>=t), past = res.filter(e=>evEndKey(e)<t).reverse();
+  if (!res.length){ box.innerHTML = `<div class="empty"><b>Nic nenalezeno</b>Zkuste jiné slovo.</div>`; return; }
+  box.innerHTML = (fut.length?`<div class="day"><div class="day-h"><h2>Nadcházející</h2><span>${fut.length}</span></div>${fut.slice(0,100).map(e=>evCard(e,true)).join('')}</div>`:'') +
+    (past.length?`<div class="day"><div class="day-h"><h2>Proběhlo</h2><span>${past.length}</span></div>${past.slice(0,50).map(e=>evCard(e,true)).join('')}</div>`:'');
+}
+
+/* ================= settings ================= */
+$('#btn-settings').onclick = openSettings;
+function openSettings(){
+  openSheet(`
+    <h3>Rodina</h3>
+    <p class="hint" style="margin-top:-6px">Každý se přihlašuje svým Google e-mailem. Kdo tu nemá e-mail, nemůže se přihlásit.</p>
+    <div id="s-list">${members.map(m=>`
+      <div class="mem" data-id="${m.id}">
+        <div class="r"><span class="avatar" style="background:${m.color};width:36px;height:36px;font-size:14px">${esc(m.name[0])}</span><input class="inp s-name" value="${esc(m.name)}" placeholder="Jméno" maxlength="30"></div>
+        <input class="inp s-mail" type="email" value="${esc(m.email||'')}" placeholder="e-mail@gmail.com" style="margin-bottom:10px" ${m.id===me.id?'readonly title="Vlastní e-mail nelze změnit"':''}>
+        <div class="swatches">${COLORS.map(c=>`<button data-c="${c}" class="${c===m.color?'on':''}" style="background:${c}" aria-label="barva"></button>`).join('')}</div>
+      </div>`).join('')}</div>
+    <div class="toggle" style="margin-top:6px"><span>Upozornění v 7:00 a 19:00<br><small style="color:var(--muted);font-weight:500">Ráno co je dnes, večer co je zítra</small></span><button class="sw" id="s-push" aria-label="Upozornění"></button></div>
+    <p class="hint" id="s-push-hint"></p>
+    <div class="actions"><button class="btn" id="s-save">Uložit</button></div>
+    <div style="text-align:center;margin-top:14px;color:var(--muted);font-size:13px">Přihlášen: ${esc(user.email)}</div>
+    <div style="text-align:center"><button class="btn danger" id="s-logout">Odhlásit se</button></div>`,
+  s => {
+    s.querySelectorAll('.swatches').forEach(w => w.onclick = e => { const b=e.target.closest('button'); if(!b) return; w.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); w.closest('.mem').querySelector('.avatar').style.background=b.dataset.c; });
+    s.querySelector('#s-logout').onclick = logout;
+    initPushToggle(s);
+    s.querySelector('#s-save').onclick = async () => {
+      const rows = [...s.querySelectorAll('.mem')].map(el => ({ id: el.dataset.id, name: el.querySelector('.s-name').value.trim() || 'Člen', email: el.querySelector('.s-mail').value.trim().toLowerCase() || null, color: el.querySelector('.swatches .on')?.dataset.c }));
+      const mails = rows.map(r=>r.email).filter(Boolean); if (new Set(mails).size !== mails.length) return toast('Stejný e-mail je tam dvakrát');
+      for (const r of rows){ if (r.id===me.id) delete r.email; const id=r.id; delete r.id;
+        const { error } = await sb.from('members').update(r).eq('id', id); if (error) return toast('Uložení se nepovedlo'); }
+      const { data } = await sb.from('members').select('*').order('position'); members = data || members; me = members.find(m=>m.id===me.id) || me;
+      saveCache(); render(); closeSheet(); toast('Uloženo');
+    };
+  });
+}
+
+/* ================= notifications ================= */
+function pushSupported(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function isStandalone(){ return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+function b64ToBytes(s){ s = s.replace(/-/g,'+').replace(/_/g,'/'); s += '='.repeat((4 - s.length % 4) % 4); return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
+async function currentSub(){ try { const r = await navigator.serviceWorker.ready; return await r.pushManager.getSubscription(); } catch(e){ return null; } }
+async function initPushToggle(s){
+  const sw = s.querySelector('#s-push'), hint = s.querySelector('#s-push-hint');
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if (!pushSupported()){
+    sw.disabled = true; sw.style.opacity = .4;
+    hint.textContent = isIOS && !isStandalone() ? 'Na iPhonu fungují upozornění jen v aplikaci přidané na plochu (Sdílet → Přidat na plochu).' : 'Tento prohlížeč upozornění nepodporuje.';
+    return;
+  }
+  let on = !!(await currentSub()) && Notification.permission === 'granted';
+  sw.classList.toggle('on', on);
+  if (Notification.permission === 'denied') hint.textContent = 'Upozornění jsou v telefonu zakázaná. Povolte je v nastavení telefonu u této aplikace.';
+  sw.onclick = async () => {
+    sw.disabled = true;
+    try {
+      if (!on){
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted'){ hint.textContent = 'Bez povolení upozornění posílat nejde.'; return; }
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
+        const j = sub.toJSON();
+        const { error } = await sb.from('push_subscriptions').upsert({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, member_id: me.id });
+        if (error) throw error;
+        on = true; hint.textContent = 'Hotovo — upozornění přijdou v 7:00 a v 19:00, když bude něco v kalendáři.';
+      } else {
+        const sub = await currentSub();
+        if (sub){ await sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe(); }
+        on = false; hint.textContent = 'Upozornění vypnuta.';
+      }
+      sw.classList.toggle('on', on);
+    } catch(e){ hint.textContent = 'Nepodařilo se to nastavit, zkuste to znovu.'; }
+    finally { sw.disabled = false; }
+  };
+}
+
+/* ================= start ================= */
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+boot();
+</script>
+</body>
+</html>
