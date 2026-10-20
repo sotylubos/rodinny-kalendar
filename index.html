@@ -406,9 +406,13 @@ function showClaim(){
 }
 
 async function loadEvents(){
-  const { data, error } = await sb.from('events').select('*').order('starts_at').limit(10000);
-  if (error){ toast('Nepodařilo se načíst události'); return; }
-  events = data || [];
+  let data = [];
+  for (let from = 0; ; from += 1000){
+    const r = await sb.from('events').select('*').order('starts_at').order('id').range(from, from + 999);
+    if (r.error){ toast('Nepodařilo se načíst události'); return; }
+    data = data.concat(r.data || []); if (!r.data || r.data.length < 1000) break;
+  }
+  events = data;
   if (events.some(e => e.series_id) && !migrating){ migrating = true; const ok = await migrateSeries(); migrating = false; if (ok) return loadEvents(); }
   saveCache(); render();
 }
