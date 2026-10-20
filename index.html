@@ -77,6 +77,10 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .day-h .nd::before{content:'svátek · ';opacity:.7}
 .hol{margin:-4px 4px 8px;font-size:13px;font-weight:700;color:var(--danger)}
 .ev .title .ic{margin-right:6px}
+.ndhit{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow);margin-bottom:8px;width:100%;text-align:left}
+.ndhit .ndi{font-size:22px}
+.ndhit b{font-size:16px;font-weight:800}
+.ndhit small{display:block;color:var(--muted);font-weight:600;font-size:13px;margin-top:2px}
 .tick.hol b,.tick.hol small{color:var(--danger)}
 .mc.hol{color:var(--danger)}
 
@@ -791,14 +795,26 @@ $('#btn-search-close').onclick = () => { show('app'); render(); };
 $('#search-inp').oninput = runSearch;
 function runSearch(){
   const q = norm($('#search-inp').value).trim(), box = $('#search-res');
-  if (!q){ box.innerHTML = `<div class="empty"><b>Co hledáte?</b>Hledá v názvech, poznámkách i jménech.</div>`; return; }
+  if (!q){ box.innerHTML = `<div class="empty"><b>Co hledáte?</b>Hledá v událostech, jménech i jmeninách.</div>`; return; }
   const words = q.split(/\s+/);
   const t = todayKey();
   const res = events.filter(e => { const ns = idsOf(e).map(memberOf).filter(Boolean).map(m=>m.name).join(' '); const hay = norm(e.title+' '+(e.note||'')+' '+(ns||'cela rodina')); return words.every(w=>hay.includes(w)); });
   const fut = res.filter(e=>evEndKey(e)>=t), past = res.filter(e=>evEndKey(e)<t).reverse();
-  if (!res.length){ box.innerHTML = `<div class="empty"><b>Nic nenalezeno</b>Zkuste jiné slovo.</div>`; return; }
-  box.innerHTML = (fut.length?`<div class="day"><div class="day-h"><h2>Nadcházející</h2><span>${fut.length}</span></div>${fut.slice(0,100).map(e=>evCard(e,true)).join('')}</div>`:'') +
+  const nd = ndSearch(q);
+  if (!res.length && !nd.length){ box.innerHTML = `<div class="empty"><b>Nic nenalezeno</b>Zkuste jiné slovo.</div>`; return; }
+  box.innerHTML = (nd.length?`<div class="day"><div class="day-h"><h2>Jmeniny</h2><span>${nd.length}</span></div>${nd.map(x=>`<button class="ndhit" data-k="${x.k}"><span class="ndi">🌸</span><span><b>${esc(x.n)}</b><small>${esc(cap(fmtLong.format(parseKey(x.k))))} · ${x.d===0?'dnes':x.d===1?'zítra':'za '+x.d+(x.d<5?' dny':' dní')}</small></span></button>`).join('')}</div>`:'') + (fut.length?`<div class="day"><div class="day-h"><h2>Nadcházející</h2><span>${fut.length}</span></div>${fut.slice(0,100).map(e=>evCard(e,true)).join('')}</div>`:'') +
     (past.length?`<div class="day"><div class="day-h"><h2>Proběhlo</h2><span>${past.length}</span></div>${past.slice(0,50).map(e=>evCard(e,true)).join('')}</div>`:'');
+  box.querySelectorAll('.ndhit').forEach(b => b.onclick = () => { filter = 'all'; selDay = b.dataset.k; showPast = false; show('app'); render(); window.scrollTo({top:0}); });
+}
+function ndSearch(q){
+  if (q.length < 2) return [];
+  const t = todayKey(), y = +t.slice(0,4), out = [];
+  for (const [md, names] of Object.entries(ND)) for (const n of names.split(', ')){
+    if (!norm(n).startsWith(q)) continue;
+    let yy = y, k; do { k = yy + '-' + md.slice(0,2) + '-' + md.slice(2); yy++; } while (k < t || parseKey(k).getMonth()+1 !== +md.slice(0,2));
+    out.push({ n, k, d: dIdx(k) });
+  }
+  return out.sort((a,b) => a.d - b.d).slice(0, 8);
 }
 
 /* ================= settings ================= */
