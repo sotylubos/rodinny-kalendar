@@ -319,10 +319,43 @@ function tagsOf(e){ const ms = idsOf(e).map(memberOf).filter(Boolean); return ms
 function barOf(e){ const cs = idsOf(e).map(memberOf).filter(Boolean).map(m=>m.color); if (!cs.length) return 'var(--accent)'; if (cs.length===1) return cs[0]; return 'linear-gradient(' + cs.map((c,i)=>c+' '+(i*100/cs.length)+'% '+((i+1)*100/cs.length)+'%').join(',') + ')'; }
 function evStartKey(e){ return keyOf(new Date(e.starts_at)); }
 function evEndKey(e){ return e.all_day && e.ends_at ? keyOf(new Date(e.ends_at)) : evStartKey(e); }
+/* ---------- opakování (pravidla) ---------- */
+let occ = [], byDay = new Map();
+function master(e){ return e._m || e; }
+function occDates(e, from, to){
+  const s = evStartKey(e), span = Math.round((parseKey(evEndKey(e)) - parseKey(s))/864e5);
+  if (!e.rrule) return (s <= to && addDays(s, span) >= from) ? [s] : [];
+  const lim = e.rrule_until && e.rrule_until < to ? e.rrule_until : to, lo = addDays(from, -span), ex = e.exdates || [], out = [];
+  const d0 = parseKey(s), sd = d0.getDate(); let k = s, n = 0, g = 0;
+  const step = { daily:1, workdays:1, weekly:7, biweekly:14 }[e.rrule];
+  if (step && s < lo){ k = addDays(s, Math.floor(Math.round((parseKey(lo) - d0)/864e5)/step)*step); }
+  while (k <= lim && g++ < 5000){
+    const wd = parseKey(k).getDay();
+    if (k >= lo && !ex.includes(k) && (e.rrule!=='workdays' || (wd>0 && wd<6))) out.push(k);
+    if (step) k = addDays(k, step);
+    else { n++; const d = e.rrule==='yearly' ? new Date(d0.getFullYear()+n, d0.getMonth(), 1) : new Date(d0.getFullYear(), d0.getMonth()+n, 1); d.setDate(Math.min(sd, new Date(d.getFullYear(), d.getMonth()+1, 0).getDate())); k = keyOf(d); }
+  }
+  return out;
+}
+function occAt(e, k){
+  if (!e.rrule) return e;
+  const dd = Math.round((parseKey(k) - parseKey(evStartKey(e)))/864e5);
+  const sh = iso => { if (!iso) return iso; const x = new Date(iso); x.setDate(x.getDate()+dd); return x.toISOString(); };
+  return Object.assign({}, e, { id: e.id+'|'+k, _m: e, _k: k, starts_at: sh(e.starts_at), ends_at: sh(e.ends_at) });
+}
+function nextOcc(e, from){ const k = occDates(e, from, addDays(from, 1500))[0]; return k ? occAt(e, k) : null; }
+function rebuildOcc(){
+  const t = todayKey(); let lo = addDays(t,-400), hi = addDays(t,1100);
+  [selDay, keyOf(monthCursor)].forEach(k => { if (addDays(k,-60) < lo) lo = addDays(k,-60); if (addDays(k,420) > hi) hi = addDays(k,420); });
+  occ = []; byDay = new Map();
+  events.forEach(e => occDates(e, lo, hi).forEach(k => occ.push(occAt(e, k))));
+  occ.forEach(o => { for (let k = evStartKey(o), end = evEndKey(o), i = 0; k <= end && i < 60; k = addDays(k,1), i++){ if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(o); } });
+}
 function eventsOn(k){
-  return events.filter(e => (filter==='all' || !idsOf(e).length || idsOf(e).includes(filter)) && evStartKey(e)<=k && evEndKey(e)>=k)
+  return (byDay.get(k) || []).filter(e => filter==='all' || !idsOf(e).length || idsOf(e).includes(filter))
     .sort((a,b)=> (b.all_day-a.all_day) || (new Date(a.starts_at)-new Date(b.starts_at)));
 }
+
 
 /* ================= auth & boot ================= */
 $('#btn-google').onclick = async () => {
@@ -375,12 +408,31 @@ function showClaim(){
 async function loadEvents(){
   const { data, error } = await sb.from('events').select('*').order('starts_at').limit(10000);
   if (error){ toast('Nepodařilo se načíst události'); return; }
-  events = data || []; saveCache(); render();
+  events = data || [];
+  if (events.some(e => e.series_id) && !migrating){ migrating = true; const ok = await migrateSeries(); migrating = false; if (ok) return loadEvents(); }
+  saveCache(); render();
+}
+let migrating = false;
+async function migrateSeries(){
+  const groups = {}; events.forEach(e => { if (e.series_id) (groups[e.series_id] = groups[e.series_id] || []).push(e); });
+  toast('Uklízím opakované události…');
+  for (const g of Object.values(groups)){
+    g.sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)); const m = g[0];
+    if (g.length === 1){ const r = await sb.from('events').update({ series_id: null }).eq('id', m.id); if (r.error) return false; continue; }
+    const ds = g.map(evStartKey), gap = Math.round((parseKey(ds[1]) - parseKey(ds[0]))/864e5), last = ds[ds.length-1];
+    const rule = gap >= 360 ? 'yearly' : gap >= 28 ? 'monthly' : gap === 14 ? 'biweekly' : gap === 7 ? 'weekly' : ds.some((k,i) => i && Math.round((parseKey(k)-parseKey(ds[i-1]))/864e5) === 3) ? 'workdays' : 'daily';
+    const r = await sb.from('events').update({ rrule: rule, rrule_until: (rule==='yearly' || last >= '2100-01-01') ? null : last, series_id: null }).eq('id', m.id);
+    if (r.error) return false;
+    const rest = g.slice(1).map(x => x.id);
+    for (let i = 0; i < rest.length; i += 100){ const d = await sb.from('events').delete().in('id', rest.slice(i, i+100)); if (d.error) return false; }
+  }
+  return true;
 }
 function saveCache(){ lsSet('rk_cache', { uid:user.id, members, events }); }
 let channel;
 function subscribe(){
   channel = sb.channel('events').on('postgres_changes', { event:'*', schema:'public', table:'events' }, p => {
+    if (migrating) return;
     if (p.eventType==='DELETE') events = events.filter(e=>e.id!==p.old.id);
     else { events = events.filter(e=>e.id!==p.new.id); events.push(p.new); events.sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)); }
     saveCache(); render(); if (!$('#scr-search').classList.contains('hidden')) runSearch();
@@ -413,6 +465,7 @@ document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
 function render(){ renderCore(); dialSync(); }
 function renderCore(){
   if (!me) return;
+  rebuildOcc();
   const av = $('#btn-settings'); av.style.background = me.color; av.textContent = me.name[0];
   $('#hdr-title').textContent = fmtMonth.format(view==='list' ? parseKey(selDay) : monthCursor).split(' ')[0];
   renderChips();
@@ -442,23 +495,24 @@ function renderWeek(){
     showPast=false; render(); window.scrollTo({top:0}); };
 }
 const REPTXT = { daily:'každý den', workdays:'každý pracovní den', weekly:'každý týden', biweekly:'každý druhý týden', monthly:'každý měsíc', yearly:'každý rok' };
-function evCard(e, withDate, repKind){
+const CARDS = {};
+function evCard(e, withDate, repKind){ CARDS[e.id] = e;
   const m = memberOf(e.member_id); const s = new Date(e.starts_at); const en = e.ends_at ? new Date(e.ends_at) : null;
   const time = e.all_day ? `<div class="time" style="font-size:13px">celý<br>den</div>` : `<div class="time">${hm(s)}${en?`<small>${hm(en)}</small>`:''}</div>`;
   const tag = tagsOf(e);
-  const rep = repKind ? `<span class="tag" style="background:var(--accent-soft);color:var(--accent)">↻ Opakuje se · ${REPTXT[repKind]||'pravidelně'}</span>` : e.series_id ? `<span title="Opakuje se">↻</span>` : '';
+  const rep = repKind ? `<span class="tag" style="background:var(--accent-soft);color:var(--accent)">↻ Opakuje se · ${REPTXT[repKind]||'pravidelně'}</span>` : master(e).rrule ? `<span title="Opakuje se">↻</span>` : '';
   return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${barOf(e)}"></span>${time}<div class="body">${withDate?`<div class="res-date">${repKind?'Příště: ':''}${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${iconFor(e.title)?`<span class="ic">${iconFor(e.title)}</span>`:''}${esc(e.title)}${ageOf(e)?`<span class="age"> · ${yearsTxt(ageOf(e))}</span>`:''}</div><div class="meta">${tag}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
 }
 function renderPerson(){
   const m = memberOf(filter); if (!m){ filter = 'all'; renderList(); return; }
   const from = selDay < todayKey() ? todayKey() : selDay;
-  const mine = events.filter(e => idsOf(e).includes(filter) && evEndKey(e) >= from).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
-  const seen = new Set(), once = [], reps = [];
-  mine.forEach(e => { if (e.series_id){ if (!seen.has(e.series_id)){ seen.add(e.series_id); reps.push(e); } } else once.push(e); });
+  const mine = events.filter(e => idsOf(e).includes(filter)), byStart = (a,b)=>new Date(a.starts_at)-new Date(b.starts_at);
+  const once = mine.filter(e => !e.rrule && evEndKey(e) >= from).sort(byStart);
+  const reps = mine.filter(e => e.rrule).map(e => nextOcc(e, from)).filter(Boolean).sort(byStart);
   let h = `<div class="day-h" style="margin-top:14px"><h2 style="color:${m.color}">${esc(m.name)}</h2><span>${from===todayKey()?'všechno od dneška':'od '+fmtDM.format(parseKey(from))}</span></div>`;
   if (!once.length && !reps.length) h += `<div class="empty"><b>Nic v plánu</b>${esc(m.name)} zatím nemá žádné budoucí události.</div>`;
   if (once.length) h += `<section class="day"><div class="day-h"><h2>Nadcházející</h2><span>${once.length}</span></div>${once.map(e=>evCard(e,true)).join('')}</section>`;
-  if (reps.length) h += `<section class="day"><div class="day-h"><h2>Opakující se</h2><span>${reps.length}</span></div>${reps.map(e=>evCard(e,true,inferRep(e))).join('')}</section>`;
+  if (reps.length) h += `<section class="day"><div class="day-h"><h2>Opakující se</h2><span>${reps.length}</span></div>${reps.map(e=>evCard(e,true,master(e).rrule)).join('')}</section>`;
   $('#main').innerHTML = h;
 }
 function renderList(){
@@ -500,7 +554,7 @@ function renderMonth(){
 }
 document.addEventListener('click', e => {
   const c = e.target.closest('.ev'); if (!c) return;
-  const ev = events.find(x=>x.id===c.dataset.id); if (ev) openDetail(ev);
+  const ev = CARDS[c.dataset.id] || events.find(x=>x.id===c.dataset.id); if (ev) openDetail(ev);
 });
 
 /* ================= sheets ================= */
@@ -531,7 +585,7 @@ function openDetail(e){
     <div class="detail-row">${IC.cal}<span>${esc(dateTxt)}</span></div>
     <div class="detail-row">${IC.clock}<span>${timeTxt}</span></div>
     <div class="detail-row">${IC.user}<span class="meta" style="margin:0;flex-wrap:wrap">${tagsOf(e)}</span></div>
-    ${e.series_id?`<div class="detail-row">${IC.rep}<span>Opakovaná událost</span></div>`:''}
+    ${master(e).rrule?`<div class="detail-row">${IC.rep}<span>Opakuje se · ${REPTXT[master(e).rrule]}${master(e).rrule_until?' · do '+fmtDM.format(parseKey(master(e).rrule_until))+' '+master(e).rrule_until.slice(0,4):''}</span></div>`:''}
     ${e.note?`<p class="note">${esc(e.note)}</p>`:''}
     <div class="actions" style="margin-top:18px"><button class="btn ghost" id="d-edit">Upravit</button><button class="btn ghost" id="d-del" style="color:var(--danger)">Smazat</button></div>`,
   s => {
@@ -540,20 +594,19 @@ function openDetail(e){
   });
 }
 function confirmDelete(e){
+  const m = master(e), k = evStartKey(e), rec = !!m.rrule;
   openSheet(`<h3>Smazat „${esc(e.title)}“?</h3>
     <div style="display:grid;gap:10px">
-      <button class="btn" id="x-one" style="background:var(--danger)">Smazat ${e.series_id?'jen tuto':''}</button>
-      ${e.series_id?`<button class="btn ghost" id="x-fut" style="color:var(--danger)">Smazat tuto i všechny další</button>`:''}
+      <button class="btn" id="x-one" style="background:var(--danger)">Smazat ${rec?'jen tuto':''}</button>
+      ${rec?`<button class="btn ghost" id="x-fut" style="color:var(--danger)">Smazat tuto i všechny další</button>`:''}
       <button class="btn ghost" id="x-no">Zpět</button></div>`, s => {
+    const done = async res => { if (res.error) return toast('Smazání se nepovedlo'); await loadEvents(); closeSheet(); toast('Smazáno'); };
     s.querySelector('#x-no').onclick = () => openDetail(e);
-    s.querySelector('#x-one').onclick = async () => { const {error}=await sb.from('events').delete().eq('id',e.id); if(error) return toast('Smazání se nepovedlo'); events=events.filter(x=>x.id!==e.id); saveCache(); render(); closeSheet(); toast('Smazáno'); };
-    const f = s.querySelector('#x-fut'); if (f) f.onclick = async () => {
-      const {error}=await sb.from('events').delete().eq('series_id',e.series_id).gte('starts_at',e.starts_at);
-      if(error) return toast('Smazání se nepovedlo');
-      events=events.filter(x=>!(x.series_id===e.series_id && x.starts_at>=e.starts_at)); saveCache(); render(); closeSheet(); toast('Smazáno');
-    };
+    s.querySelector('#x-one').onclick = async () => done(rec ? await sb.from('events').update({ exdates: [...(m.exdates||[]), k] }).eq('id', m.id) : await sb.from('events').delete().eq('id', m.id));
+    const f = s.querySelector('#x-fut'); if (f) f.onclick = async () => done(k <= evStartKey(m) ? await sb.from('events').delete().eq('id', m.id) : await sb.from('events').update({ rrule_until: addDays(k,-1) }).eq('id', m.id));
   });
 }
+
 
 /* ---------- editor ---------- */
 function openEditor(e, preset){
@@ -563,8 +616,9 @@ function openEditor(e, preset){
       start: e.all_day?'09:00':hm(new Date(e.starts_at)), end: (!e.all_day && e.ends_at)?hm(new Date(e.ends_at)):'', note:e.note||''
     } : Object.assign({ title:'', member_id: me.id, date: selDay < todayKey() ? todayKey() : selDay, endDate:null, all_day:false, start:'09:00', end:'10:00', note:'' }, preset||{});
   if (!d.endDate) d.endDate = d.date;
-  let rep = e && e.series_id ? inferRep(e) : 'none', scope = 'all';
-  const lastKey = e && e.series_id ? events.filter(x=>x.series_id===e.series_id).map(evStartKey).sort().pop() : null;
+  const m0 = e ? master(e) : null;
+  let rep = m0 && m0.rrule ? m0.rrule : 'none', scope = 'all';
+  const lastKey = m0 && m0.rrule_until ? m0.rrule_until : '';
   openSheet(`
     <h3>${isNew?'Nová událost':'Upravit událost'}</h3>
     <label class="field"><span>Co</span><input class="inp" id="f-title" placeholder="Zubař, práce, trénink…" value="${esc(d.title)}" maxlength="200"></label>
@@ -577,11 +631,11 @@ function openEditor(e, preset){
       <label class="field" id="w-enddate"><span>Do</span><input class="inp" type="date" id="f-enddate" value="${d.endDate}"></label></div>
     <div class="row2" id="w-times"><label class="field"><span>Od</span><input class="inp" type="time" id="f-start" value="${d.start}"></label>
       <label class="field"><span>Do</span><input class="inp" type="time" id="f-end" value="${d.end}"></label></div>
-    ${e&&e.series_id?'<div class="field"><span>Změnit</span><div class="who" id="f-scope"><button data-s="all" class="on" style="background:var(--accent)">Tuto i všechny další</button><button data-s="one">Jen tuto</button></div></div>':''}
+    ${m0&&m0.rrule?'<div class="field"><span>Změnit</span><div class="who" id="f-scope"><button data-s="all" class="on" style="background:var(--accent)">Tuto i všechny další</button><button data-s="one">Jen tuto</button></div></div>':''}
     ${true?`<label class="field" id="w-rep"><span>Opakovat</span><select class="inp" id="f-rep">
       <option value="none">Neopakovat</option><option value="daily">Každý den</option><option value="workdays">Každý pracovní den (po–pá)</option>
       <option value="weekly">Každý týden</option><option value="biweekly">Každý druhý týden</option><option value="monthly">Každý měsíc</option><option value="yearly">Každý rok (narozeniny, výročí)</option></select></label>
-      <label class="field hidden" id="w-until"><span>Opakovat do</span><input class="inp" type="date" id="f-until" value="${addDays(d.date,90)}"></label>`:''}
+      <label class="field hidden" id="w-until"><span>Opakovat do <small style="font-weight:600">(nevyplněno = napořád)</small></span><input class="inp" type="date" id="f-until" value=""></label>`:''}
     <label class="field"><span>Poznámka</span><textarea class="inp" id="f-note" placeholder="Adresa, co vzít s sebou…">${esc(d.note)}</textarea></label>
     <div class="actions"><button class="btn ghost" id="f-cancel">Zrušit</button><button class="btn" id="f-save">Uložit</button></div>`,
   s => {
@@ -596,7 +650,7 @@ function openEditor(e, preset){
     s.querySelector('#f-start').onchange = ev => { const en=s.querySelector('#f-end'); if(!en.value || en.value<=ev.target.value){ const [h,mi]=ev.target.value.split(':').map(Number); en.value=pad((h+1)%24)+':'+pad(mi); } };
     const r = s.querySelector('#f-rep'); if (r){ r.value = rep; s.querySelector('#w-until').classList.toggle('hidden', rep==='none'); if (lastKey) s.querySelector('#f-until').value = lastKey; }
     const sc = s.querySelector('#f-scope'); if (sc) sc.onclick = ev => { const b=ev.target.closest('button'); if(!b) return; scope=b.dataset.s; sc.querySelectorAll('button').forEach(x=>{ x.classList.toggle('on',x===b); x.style.background = x===b?'var(--accent)':''; }); s.querySelector('#w-rep').classList.toggle('hidden', scope==='one'); s.querySelector('#w-until').classList.toggle('hidden', scope==='one' || rep==='none'); };
-    if (r) r.onchange = () => { rep=r.value; s.querySelector('#w-until').classList.toggle('hidden', rep==='none'); const u=s.querySelector('#f-until'), dd=s.querySelector('#f-date').value; if (dd) u.value = rep==='yearly' ? addDays(dd, 3652) : addDays(dd, 90); if (rep==='yearly' && !allDay){ allDay=true; setAll(); } };
+    if (r) r.onchange = () => { rep=r.value; s.querySelector('#w-until').classList.toggle('hidden', rep==='none'); if (rep==='yearly' && !allDay){ allDay=true; setAll(); } };
     s.querySelector('#f-cancel').onclick = () => e ? openDetail(e) : closeSheet();
     if (isNew && !d.title) setTimeout(()=>s.querySelector('#f-title').focus(), 300);
     s.querySelector('#f-save').onclick = async () => {
@@ -613,36 +667,23 @@ function openEditor(e, preset){
       };
       const btn = s.querySelector('#f-save'); btn.disabled = true; btn.textContent = 'Ukládám…';
       let error;
-      const whole = !isNew && scope==='all' && (e.series_id || rep!=='none');
-      if (whole){
-        const dr = e.series_id ? await sb.from('events').delete().eq('series_id', e.series_id).gte('starts_at', e.starts_at) : await sb.from('events').delete().eq('id', e.id);
-        if (dr.error){ btn.disabled=false; btn.textContent='Uložit'; toast('Uložení se nepovedlo'); return; }
-        events = events.filter(x => e.series_id ? !(x.series_id===e.series_id && x.starts_at>=e.starts_at) : x.id!==e.id);
-      }
-      if (isNew || whole){
-        const dates = repeatDates(date, rep, rep==='none' ? date : s.querySelector('#f-until').value);
-        const sid = dates.length > 1 ? crypto.randomUUID() : null;
-        const rows = dates.map(k => Object.assign(mk(k), { series_id: sid }));
-        const res = await sb.from('events').insert(rows).select(); error = res.error;
-        if (!error) { res.data.forEach(n=>{ if(!events.find(x=>x.id===n.id)) events.push(n); }); }
-      } else {
-        const res = await sb.from('events').update(mk(date)).eq('id', e.id).select(); error = res.error;
-        if (!error && res.data[0]) events = events.map(x=>x.id===e.id?res.data[0]:x);
-      }
+      const until = s.querySelector('#f-until').value || null;
+      const row = Object.assign(mk(date), rep==='none' ? { rrule:null, rrule_until:null } : { rrule:rep, rrule_until:until });
+      const q = [];
+      if (isNew) q.push(() => sb.from('events').insert(row));
+      else if (!m0.rrule) q.push(() => sb.from('events').update(row).eq('id', m0.id));
+      else if (scope==='one'){ q.push(() => sb.from('events').update({ exdates: [...(m0.exdates||[]), evStartKey(e)] }).eq('id', m0.id)); q.push(() => sb.from('events').insert(Object.assign(mk(date), { rrule:null, rrule_until:null }))); }
+      else if (evStartKey(e) <= evStartKey(m0)) q.push(() => sb.from('events').update(row).eq('id', m0.id));
+      else { q.push(() => sb.from('events').update({ rrule_until: addDays(evStartKey(e), -1) }).eq('id', m0.id)); q.push(() => sb.from('events').insert(row)); }
+      for (const run of q){ const r = await run(); if (r.error){ error = r.error; break; } }
       if (error){ btn.disabled=false; btn.textContent='Uložit'; toast('Uložení se nepovedlo'); return; }
-      events.sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)); saveCache();
       selDay = date; if (view==='month') monthCursor = firstOfMonth(parseKey(date));
-      render(); closeSheet(); toast(isNew ? 'Přidáno' : 'Uloženo');
+      await loadEvents();
+      closeSheet(); toast(isNew ? 'Přidáno' : 'Uloženo');
     };
   });
 }
-function inferRep(e){
-  const ks = events.filter(x=>x.series_id===e.series_id).map(evStartKey).sort();
-  if (ks.length < 2) return 'none';
-  const g = Math.round((parseKey(ks[1]) - parseKey(ks[0]))/864e5);
-  if (g >= 360) return 'yearly'; if (g >= 28) return 'monthly'; if (g === 14) return 'biweekly'; if (g === 7) return 'weekly';
-  return ks.some((k,i)=> i && Math.round((parseKey(k)-parseKey(ks[i-1]))/864e5)===3) ? 'workdays' : 'daily';
-}
+function inferRep(e){ return master(e).rrule || 'none'; }
 function repeatDates(start, rep, until){
   if (rep==='none' || !until || until < start) return [start];
   const out = []; let k = start, guard = 0, mi = 0; const sd = parseKey(start).getDate();
@@ -805,10 +846,11 @@ function runSearch(){
   const words = q.split(/\s+/);
   const t = todayKey();
   const res = events.filter(e => { const ns = idsOf(e).map(memberOf).filter(Boolean).map(m=>m.name).join(' '); const hay = norm(e.title+' '+(e.note||'')+' '+(ns||'cela rodina')); return words.every(w=>hay.includes(w)); });
-  const fut = res.filter(e=>evEndKey(e)>=t), past = res.filter(e=>evEndKey(e)<t).reverse();
+  const fut = res.flatMap(e => e.rrule ? [nextOcc(e, t)].filter(Boolean) : evEndKey(e)>=t ? [e] : []).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+  const past = res.filter(e => !e.rrule && evEndKey(e)<t).sort((a,b)=>new Date(b.starts_at)-new Date(a.starts_at));
   const nd = ndSearch(q);
   if (!res.length && !nd.length){ box.innerHTML = `<div class="empty"><b>Nic nenalezeno</b>Zkuste jiné slovo.</div>`; return; }
-  box.innerHTML = (nd.length?`<div class="day"><div class="day-h"><h2>Jmeniny</h2><span>${nd.length}</span></div>${nd.map(x=>`<button class="ndhit" data-k="${x.k}"><span class="ndi">🌸</span><span><b>${esc(x.n)}</b><small>${esc(cap(fmtLong.format(parseKey(x.k))))} · ${x.d===0?'dnes':x.d===1?'zítra':'za '+x.d+(x.d<5?' dny':' dní')}</small></span></button>`).join('')}</div>`:'') + (fut.length?`<div class="day"><div class="day-h"><h2>Nadcházející</h2><span>${fut.length}</span></div>${fut.slice(0,100).map(e=>evCard(e,true)).join('')}</div>`:'') +
+  box.innerHTML = (nd.length?`<div class="day"><div class="day-h"><h2>Jmeniny</h2><span>${nd.length}</span></div>${nd.map(x=>`<button class="ndhit" data-k="${x.k}"><span class="ndi">🌸</span><span><b>${esc(x.n)}</b><small>${esc(cap(fmtLong.format(parseKey(x.k))))} · ${x.d===0?'dnes':x.d===1?'zítra':'za '+x.d+(x.d<5?' dny':' dní')}</small></span></button>`).join('')}</div>`:'') + (fut.length?`<div class="day"><div class="day-h"><h2>Nadcházející</h2><span>${fut.length}</span></div>${fut.slice(0,100).map(e=>evCard(e,true,master(e).rrule)).join('')}</div>`:'') +
     (past.length?`<div class="day"><div class="day-h"><h2>Proběhlo</h2><span>${past.length}</span></div>${past.slice(0,50).map(e=>evCard(e,true)).join('')}</div>`:'');
   box.querySelectorAll('.ndhit').forEach(b => b.onclick = () => { filter = 'all'; selDay = b.dataset.k; showPast = false; show('app'); render(); window.scrollTo({top:0}); });
 }
