@@ -73,6 +73,12 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .wd .dots i{width:5px;height:5px;border-radius:50%}
 .wd.today b{color:var(--accent)}
 .wd.sel{background:var(--ink)} .wd.sel small,.wd.sel b{color:var(--bg)}
+.day-h .nd{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--muted);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
+.day-h .nd::before{content:'svátek · ';opacity:.7}
+.hol{margin:-4px 4px 8px;font-size:13px;font-weight:700;color:var(--danger)}
+.ev .title .ic{margin-right:6px}
+.tick.hol b,.tick.hol small{color:var(--danger)}
+.mc.hol{color:var(--danger)}
 
 main{padding:4px 16px calc(230px + env(safe-area-inset-bottom))}
 .day{margin-top:18px}
@@ -378,6 +384,18 @@ function subscribe(){
 document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me) loadEvents(); });
 sb.auth.onAuthStateChange((evt) => { if (evt==='SIGNED_IN' && !booted) boot(); });
 
+/* ================= jmeniny, svátky, ikonky ================= */
+const ND = {}; '0102=Karina;0103=Radmila, Radomil;0104=Diana;0105=Dalimil;0106=Kašpar, Melichar, Baltazar;0107=Vilma;0108=Čestmír;0109=Vladan, Valtr;0110=Břetislav;0111=Bohdana;0112=Pravoslav;0113=Edita;0114=Radovan;0115=Alice;0116=Ctirad;0117=Drahoslav;0118=Vladislav, Vladislava;0119=Doubravka;0120=Ilona, Sebastián;0121=Běla;0122=Slavomír, Slavomíra;0123=Zdeněk;0124=Milena;0125=Miloš;0126=Zora;0127=Ingrid;0128=Otýlie;0129=Zdislava;0130=Robin, Erna;0131=Marika, Spytihněv;0201=Hynek;0202=Nela, Hromnice;0203=Blažej;0204=Jarmila;0205=Dobromila;0206=Vanda;0207=Veronika;0208=Milada;0209=Apolena;0210=Mojmír;0211=Božena;0212=Slavěna, Slávka;0213=Věnceslav, Věnceslava;0214=Valentýn, Valentýna;0215=Jiřina;0216=Ljuba;0217=Miloslava;0218=Gizela;0219=Patrik;0220=Oldřich;0221=Lenka, Eleonora;0222=Petr;0223=Svatopluk;0224=Matěj, Matyáš;0225=Liliana;0226=Dorota;0227=Alexandr;0228=Lumír;0229=Horymír;0301=Bedřich, Bedřiška;0302=Anežka;0303=Kamil, Kunhuta;0304=Stela;0305=Kazimír;0306=Miroslav;0307=Tomáš;0308=Gabriela, Zoltán;0309=Františka;0310=Viktorie;0311=Anděla;0312=Řehoř;0313=Růžena;0314=Rút, Matylda;0315=Ida;0316=Elena, Herbert;0317=Vlastimil, Vlastimila;0318=Eduard;0319=Josef, Josefa;0320=Světlana;0321=Radek;0322=Leona, Leontina, Lea;0323=Ivona;0324=Gabriel;0325=Marián;0326=Emanuel;0327=Dita;0328=Soňa;0329=Taťána;0330=Arnošt, Ernest;0331=Kvido;0401=Hugo;0402=Erika;0403=Richard;0404=Ivana;0405=Miroslava, Mirka;0406=Vendula, Venuše;0407=Heřman, Hermína;0408=Ema;0409=Dušan;0410=Darja;0411=Izabela;0412=Julius;0413=Aleš;0414=Vincenc;0415=Anastázie;0416=Irena, Bernadeta;0417=Rudolf;0418=Valérie;0419=Rostislav;0420=Marcela;0421=Alexandra;0422=Evženie;0423=Vojtěch;0424=Jiří;0425=Marek;0426=Oto;0427=Jaroslav;0428=Vlastislav;0429=Robert;0430=Blahoslav;0502=Zikmund;0503=Alexej, Alex;0504=Květoslav;0505=Klaudie;0506=Radoslav;0507=Stanislav;0509=Ctibor;0510=Blažena;0511=Svatava;0512=Pankrác;0513=Servác;0514=Bonifác;0515=Žofie, Sofie;0516=Přemysl;0517=Aneta;0518=Nataša;0519=Ivo;0520=Zbyšek;0521=Monika;0522=Emil;0523=Vladimír, Vladimíra;0524=Jana, Vanesa;0525=Viola;0526=Filip;0527=Valdemar;0528=Vilém;0529=Maxmilián, Maxim;0530=Ferdinand;0531=Kamila;0601=Laura;0602=Jarmil;0603=Tamara, Kevin;0604=Dalibor;0605=Dobroslav, Dobroslava;0606=Norbert;0607=Iveta, Slavoj;0608=Medard;0609=Stanislava;0610=Gita, Margita;0611=Bruno;0612=Antonie;0613=Antonín;0614=Roland, Herta;0615=Vít;0616=Zbyněk;0617=Adolf;0618=Milan, Milana;0619=Leoš, Leo;0620=Květa, Květuše;0621=Alois, Aloisie;0622=Pavla;0623=Zdeňka;0624=Jan;0625=Ivan;0626=Adriana, Adrian;0627=Ladislav, Ladislava;0628=Lubomír;0629=Petr, Pavel;0630=Šárka;0701=Jaroslava;0702=Patricie;0703=Radomír, Radomíra;0704=Prokop;0705=Cyril, Metoděj;0707=Bohuslava;0708=Nora;0709=Drahoslava, Drahuše;0710=Libuše, Amálie;0711=Olga, Helga;0712=Bořek;0713=Markéta;0714=Karolína;0715=Jindřich;0716=Luboš;0717=Martina;0718=Drahomíra, Drahomír;0719=Čeněk;0720=Ilja;0721=Vítězslav, Vítězslava;0722=Magdaléna, Magda;0723=Libor;0724=Kristýna;0725=Jakub;0726=Anna, Anita;0727=Věroslav;0728=Viktor, Alina;0729=Marta;0730=Bořivoj;0731=Ignác;0801=Oskar;0802=Gustav;0803=Miluše;0804=Dominik, Dominika;0805=Kristián;0806=Oldřiška;0807=Lada;0808=Soběslav;0809=Roman;0810=Vavřinec;0811=Zuzana;0812=Klára;0813=Alena;0814=Alan;0815=Hana;0816=Jáchym;0817=Petra;0818=Helena, Jelena;0819=Ludvík;0820=Bernard;0821=Johana;0822=Bohuslav;0823=Sandra;0824=Bartoloměj;0825=Radim;0826=Luděk;0827=Otakar;0828=Augustýn;0829=Evelína;0830=Vladěna;0831=Pavlína;0901=Linda, Samuel;0902=Adéla;0903=Bronislav, Bronislava;0904=Jindřiška, Rozálie;0905=Boris;0906=Boleslav;0907=Regína;0908=Mariana;0909=Daniela;0910=Irma;0911=Denisa, Denis;0912=Marie;0913=Lubor;0914=Radka;0915=Jolana;0916=Ludmila, Lidmila;0917=Naděžda, Naďa;0918=Kryštof;0919=Zita;0920=Oleg;0921=Matouš;0922=Darina;0923=Berta;0924=Jaromír, Jaromíra;0925=Zlata, Zlatuše;0926=Andrea;0927=Jonáš;0928=Václav, Václava;0929=Michal, Michael;0930=Jeroným, Ráchel;1001=Igor;1002=Olívie, Oliver;1003=Bohumil;1004=František;1005=Eliška;1006=Hanuš;1007=Justýna;1008=Věra;1009=Štefan, Sára;1010=Marina;1011=Andrej;1012=Marcel;1013=Renáta;1014=Agáta;1015=Tereza, Terezie;1016=Havel, Galina;1017=Hedvika;1018=Lukáš;1019=Michaela, Michala;1020=Vendelín;1021=Brigita;1022=Sabina;1023=Teodor;1024=Nina;1025=Beáta;1026=Erik;1027=Šarlota, Zoe;1029=Silvie, Sylva;1030=Tadeáš;1031=Štěpánka;1101=Felix;1102=Tobiáš;1103=Hubert;1104=Karel, Karla;1105=Miriam;1106=Liběna, Leonard;1107=Saskie;1108=Bohumír, Bohumíra;1109=Bohdan;1110=Evžen;1111=Martin;1112=Benedikt;1113=Tibor;1114=Sáva;1115=Leopold;1116=Otmar;1117=Mahulena, Gertruda;1118=Romana;1119=Alžběta;1120=Nikola;1121=Albert;1122=Cecílie;1123=Klement;1124=Emílie;1125=Kateřina;1126=Artur;1127=Xenie;1128=René;1129=Zina;1130=Ondřej;1201=Iva;1202=Blanka;1203=Svatoslav;1204=Barbora;1205=Jitka;1206=Mikuláš;1207=Ambrož, Benjamín;1208=Květoslava;1209=Vratislav;1210=Julie;1211=Dana, Danuše;1212=Simona;1213=Lucie;1214=Lýdie;1215=Radana, Radan;1216=Albína;1217=Daniel;1218=Miloslav;1219=Ester;1220=Dagmar;1221=Natálie;1222=Šimon;1223=Vlasta;1224=Adam, Eva;1226=Štěpán;1227=Žaneta;1228=Bohumila;1229=Judita;1230=David;1231=Silvestr'.split(';').forEach(p => { const i = p.indexOf('='); ND[p.slice(0,i)] = p.slice(i+1); });
+function nameDay(k){ return ND[k.slice(5,7)+k.slice(8,10)] || ''; }
+const HOL = { '0101':'Nový rok · Den obnovy českého státu', '0501':'Svátek práce', '0508':'Den vítězství', '0705':'Cyril a Metoděj', '0706':'Upálení mistra Jana Husa', '0928':'Den české státnosti', '1028':'Vznik Československa', '1117':'Den boje za svobodu a demokracii', '1224':'Štědrý den', '1225':'1. svátek vánoční', '1226':'2. svátek vánoční' };
+const EASTER = {};
+function easter(y){ if (EASTER[y]) return EASTER[y]; const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),hh=(19*a+b-d-g+15)%30,i=Math.floor(c/4),kk=c%4,l=(32+2*e+2*i-hh-kk)%7,m=Math.floor((a+11*hh+22*l)/451),mo=Math.floor((hh+l-7*m+114)/31),da=((hh+l-7*m+114)%31)+1; const es = keyOf(new Date(y, mo-1, da)); return EASTER[y] = { fri: addDays(es,-2), mon: addDays(es,1) }; }
+function holiday(k){ const f = HOL[k.slice(5,7)+k.slice(8,10)]; if (f) return f; const e = easter(+k.slice(0,4)); return k===e.fri ? 'Velký pátek' : k===e.mon ? 'Velikonoční pondělí' : ''; }
+function dayExtra(k){ const n = nameDay(k), hl = holiday(k); return (n ? `<span class="nd">${esc(n)}</span>` : '') + '</div>' + (hl ? `<div class="hol">${esc(hl)} · státní svátek</div>` : ''); }
+const ICONS = [['zub','🦷'],['doktor|lekar|ordinac|nemocnic|ockovan|prohlidk|vysetren','🩺'],['narozenin','🎂'],['svatek|jmenin','🌸'],['vyroci|svatb','💍'],['oslav|party|vecirek','🎉'],['box','🥊'],['fotbal','⚽'],['hokej','🏒'],['tenis','🎾'],['plavan|bazen','🏊'],['kolo|cyklo','🚴'],['trenink|posilovn|fitness|beh|sport|zapas','🏋️'],['motork|moto','🏍️'],['skol|tridni|rodicovsk|pisemk|test|zkousk|maturit','🏫'],['prace|smena|sluzb|porad|meeting|schuzk','💼'],['dovolen|vylet|chalup|chat','🏖️'],['letadl|letiste|odlet|prilet','✈️'],['vlak|nadrazi','🚆'],['kadern|holic|strih','💇'],['kosmetik|manikur|pedikur','💅'],['auto|servis|stk|pneu|myt','🚗'],['nakup|obchod','🛒'],['vecere|obed|snidan|restaurac|kavarn|pizza','🍽️'],['kino|film','🎬'],['divadl|koncert|muzikal|opera','🎭'],['urad|banka|posta|notar','🏛️'],['plat|zaplatit|faktur|najem|splatk','💳'],['veterin|pes|psa|kocka','🐾'],['uklid|prani|zehleni','🧹'],['zahrad|seka','🌱'],['babick|dedeck|navstev','👵']];
+const ICON_RE = ICONS.map(([p,i]) => [new RegExp(p), i]);
+function iconFor(t){ const n = norm(t); for (const [re,i] of ICON_RE) if (re.test(n)) return i; return ''; }
+
 /* ================= render ================= */
 document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
   view = b.dataset.view; document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on', x===b));
@@ -421,7 +439,7 @@ function evCard(e, withDate, repKind){
   const time = e.all_day ? `<div class="time" style="font-size:13px">celý<br>den</div>` : `<div class="time">${hm(s)}${en?`<small>${hm(en)}</small>`:''}</div>`;
   const tag = tagsOf(e);
   const rep = repKind ? `<span class="tag" style="background:var(--accent-soft);color:var(--accent)">↻ Opakuje se · ${REPTXT[repKind]||'pravidelně'}</span>` : e.series_id ? `<span title="Opakuje se">↻</span>` : '';
-  return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${barOf(e)}"></span>${time}<div class="body">${withDate?`<div class="res-date">${repKind?'Příště: ':''}${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${esc(e.title)}</div><div class="meta">${tag}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
+  return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${barOf(e)}"></span>${time}<div class="body">${withDate?`<div class="res-date">${repKind?'Příště: ':''}${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${iconFor(e.title)?`<span class="ic">${iconFor(e.title)}</span>`:''}${esc(e.title)}</div><div class="meta">${tag}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
 }
 function renderPerson(){
   const m = memberOf(filter); if (!m){ filter = 'all'; renderList(); return; }
@@ -443,10 +461,10 @@ function renderList(){
   if (!showPast) h += `<button class="more" id="btn-past" style="margin-top:4px">Zobrazit předchozí dny</button>`;
   for (let i=0, k=start; i < rangeDays + (showPast?30:0); i++, k=addDays(k,1)){
     const ev = eventsOn(k);
-    if (!ev.length && k!==selDay) continue;
+    if (!ev.length && k!==selDay && !holiday(k)) continue;
     const [a,b] = dayLabel(k);
-    h += `<section class="day" id="d-${k}"><div class="day-h ${k===todayKey()?'today':''}"><h2>${a}</h2><span>${b}</span></div>`;
-    h += ev.length ? ev.map(e=>evCard(e)).join('') : `<div class="empty" style="padding:18px"><b>Volno</b>Na tento den nic není.</div>`;
+    h += `<section class="day" id="d-${k}"><div class="day-h ${k===todayKey()?'today':''}"><h2>${a}</h2><span>${b}</span>${dayExtra(k)}`;
+    h += ev.length ? ev.map(e=>evCard(e)).join('') : k===selDay ? `<div class="empty" style="padding:18px"><b>Volno</b>Na tento den nic není.</div>` : '';
     h += `</section>`; shown += ev.length;
   }
   if (!shown && !events.length) h += `<div class="empty"><b>Zatím prázdno</b>Přidejte první událost tlačítkem + nebo ji nadiktujte mikrofonem.</div>`;
@@ -463,11 +481,11 @@ function renderMonth(){
   ['po','út','st','čt','pá','so','ne'].forEach(d=>h+=`<div class="dn">${d}</div>`);
   for (let i=0;i<42;i++, k=addDays(k,1)){
     const d = parseKey(k); if (i===35 && d.getMonth()!==mo) break;
-    h += `<button class="mc ${d.getMonth()!==mo?'out':''} ${k===t?'today':''} ${k===selDay?'sel':''}" data-k="${k}">${d.getDate()}<span class="dots">${dotsFor(k,4)}</span></button>`;
+    h += `<button class="mc ${d.getMonth()!==mo?'out':''} ${k===t?'today':''} ${k===selDay?'sel':''} ${holiday(k)?'hol':''}" data-k="${k}">${d.getDate()}<span class="dots">${dotsFor(k,4)}</span></button>`;
   }
   h += `</div>`;
   const ev = eventsOn(selDay); const [a,b] = dayLabel(selDay);
-  h += `<section class="day"><div class="day-h"><h2>${a}</h2><span>${b}</span></div>${ev.length?ev.map(e=>evCard(e)).join(''):'<div class="empty" style="padding:18px"><b>Volno</b>Na tento den nic není.</div>'}</section>`;
+  h += `<section class="day"><div class="day-h"><h2>${a}</h2><span>${b}</span>${dayExtra(selDay)}${ev.length?ev.map(e=>evCard(e)).join(''):'<div class="empty" style="padding:18px"><b>Volno</b>Na tento den nic není.</div>'}</section>`;
   main.innerHTML = h;
   main.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ monthCursor = new Date(y, mo + +b.dataset.m, 1); render(); });
   main.querySelector('.mgrid').onclick = e => { const b=e.target.closest('.mc'); if(!b) return; selDay=b.dataset.k; if (parseKey(selDay).getMonth()!==mo) monthCursor=firstOfMonth(parseKey(selDay)); render(); };
@@ -866,7 +884,7 @@ function dialDraw(){
   for (let i = c - 10; i <= c + 10; i++){
     const a = (i - dial.pos) * dial.STEP; if (Math.abs(a) > 42) continue;
     const k = dKey(i), d = parseKey(k), wd = d.getDay();
-    h += '<div class="tick' + (i===c?' on':'') + (i===0?' today':'') + (wd===0||wd===6?' we':'') + '" data-i="' + i + '" style="transform:rotate(' + a.toFixed(2) + 'deg) translateY(-' + dial.R + 'px);opacity:' + Math.max(0, 1 - Math.abs(a)/42).toFixed(2) + '"><small>' + (d.getDate()===1 ? MONS[d.getMonth()] : WDS[wd]) + '</small><b>' + d.getDate() + '</b><span class="dots">' + dotsFor(k,3) + '</span></div>';
+    h += '<div class="tick' + (i===c?' on':'') + (i===0?' today':'') + (wd===0||wd===6?' we':'') + (holiday(k)?' hol':'') + '" data-i="' + i + '" style="transform:rotate(' + a.toFixed(2) + 'deg) translateY(-' + dial.R + 'px);opacity:' + Math.max(0, 1 - Math.abs(a)/42).toFixed(2) + '"><small>' + (d.getDate()===1 ? MONS[d.getMonth()] : WDS[wd]) + '</small><b>' + d.getDate() + '</b><span class="dots">' + dotsFor(k,3) + '</span></div>';
   }
   el.innerHTML = h;
   $('#btn-today').classList.toggle('show', Math.abs(dial.pos) > .5);
