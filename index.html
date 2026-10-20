@@ -57,9 +57,9 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .seg{display:flex;background:var(--card);border-radius:14px;padding:4px;box-shadow:var(--shadow);margin-top:12px}
 .seg button{flex:1;height:36px;border-radius:10px;font-weight:700;font-size:14px;color:var(--muted)}
 .seg button.on{background:var(--ink);color:var(--bg)}
-.chips{display:flex;gap:6px;overflow-x:auto;padding:12px 16px 4px;margin:0 -16px;scrollbar-width:none}
+.chips{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:12px 0 4px}
 .chips::-webkit-scrollbar{display:none}
-.chip{flex:none;height:32px;padding:0 11px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:14px;color:var(--muted)}
+.chip{min-width:0;height:34px;padding:0 4px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:13.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s,color .15s}
 .chip .dot{width:9px;height:9px;border-radius:50%}
 .chip.on{background:var(--ink);color:var(--bg)}
 
@@ -391,9 +391,10 @@ function renderCore(){
 }
 function renderChips(){
   const c = $('#chips');
-  c.innerHTML = members.map(m=>`<button class="chip" data-f="${m.id}" style="${filter===m.id?`background:${m.color};color:#fff`:''}"><span class="dot" style="background:${filter===m.id?'#fff':m.color}"></span>${esc(m.name)}</button>`).join('') +
-    (filter!=='all' ? `<button class="chip clear" data-f="all" aria-label="Zobrazit všechny">✕</button>` : '');
-  c.onclick = e => { const b=e.target.closest('.chip'); if(!b) return; filter = b.dataset.f===filter ? 'all' : b.dataset.f; render(); };
+  c.style.gridTemplateColumns = 'repeat(' + (members.length + 1) + ',1fr)';
+  c.innerHTML = members.map(m=>`<button class="chip" data-f="${m.id}" style="background:${filter===m.id?m.color:m.color+'24'};color:${filter===m.id?'#fff':m.color};box-shadow:none">${esc(m.name)}</button>`).join('') +
+    `<button class="chip ${filter==='all'?'on':''}" data-f="all">Všichni</button>`;
+  c.onclick = e => { const b=e.target.closest('.chip'); if(!b) return; filter = (b.dataset.f===filter && filter!=='all') ? 'all' : b.dataset.f; render(); };
 }
 function weekStart(k){ const d=parseKey(k); const wd=(d.getDay()+6)%7; d.setDate(d.getDate()-wd); return keyOf(d); }
 function dotsFor(k, max){
