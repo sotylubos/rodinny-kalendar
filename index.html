@@ -106,14 +106,21 @@ main{padding:4px 16px calc(230px + env(safe-area-inset-bottom))}
 /* month */
 .month-h{display:flex;align-items:center;justify-content:space-between;margin:10px 4px 10px}
 .month-h h2{font-family:Fraunces,serif;font-weight:650;font-size:22px;margin:0;text-transform:capitalize}
-.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;background:var(--card);border-radius:var(--radius);padding:10px 8px;box-shadow:var(--shadow)}
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;background:var(--card);border-radius:var(--radius);padding:6px;box-shadow:var(--shadow)}
 .mgrid .dn{text-align:center;font-size:11px;font-weight:800;color:var(--muted);padding:2px 0 6px;text-transform:uppercase}
-.mc{aspect-ratio:1/1.05;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:6px;gap:4px;font-weight:700;font-size:15px}
+.mc{height:38px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:700;font-size:14px}
 .mc.out{color:var(--muted);opacity:.45}
 .mc.today{color:var(--accent)}
 .mc.sel{background:var(--ink);color:var(--bg)}
 .mc .dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;max-width:30px}
-.mc .dots i{width:6px;height:6px;border-radius:50%}
+.mc .dots i{width:4px;height:4px;border-radius:50%}
+.mc .dots{height:4px}
+.mgrid .dn{padding:2px 0 2px!important;font-size:10px!important}
+.month-h{margin:6px 4px 6px!important}
+.month-h h2{font-size:18px!important}
+.month-h .icon-btn{width:36px;height:36px;border-radius:12px}
+.top h1 .yr{font-family:Manrope,system-ui,sans-serif;font-size:17px;font-weight:700;color:var(--muted);letter-spacing:0;margin-left:2px}
+.free{margin:0 4px 6px;padding:10px 14px;border-radius:14px;border:1.5px dashed var(--line);color:var(--muted);font-weight:600;font-size:14px}
 
 /* floating buttons */
 .fabs{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));display:flex;gap:12px;z-index:6}
@@ -307,6 +314,7 @@ function dayLabel(k){
   return [cap(s.slice(0,i).replace(',','')), s.slice(i+1)];
 }
 const cap = s => s ? s[0].toUpperCase()+s.slice(1) : s;
+function hdrTitle(d){ const p = fmtMonth.format(d).split(' '); return esc(p[0]) + ' <span class="yr">' + p[1] + '</span>'; }
 function memberOf(id){ return members.find(m=>m.id===id); }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2400); }
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
@@ -471,7 +479,7 @@ function renderCore(){
   if (!me) return;
   rebuildOcc();
   const av = $('#btn-settings'); av.style.background = me.color; av.textContent = me.name[0];
-  $('#hdr-title').textContent = fmtMonth.format(view==='list' ? parseKey(selDay) : monthCursor).split(' ')[0];
+  $('#hdr-title').innerHTML = hdrTitle(view==='list' ? parseKey(selDay) : monthCursor);
   renderChips();
   if (view==='list') renderList(); else renderMonth();
 }
@@ -530,7 +538,7 @@ function renderList(){
     if (!ev.length && k!==selDay && !holiday(k)) continue;
     const [a,b] = dayLabel(k);
     h += `<section class="day" id="d-${k}"><div class="day-h ${k===todayKey()?'today':''}"><h2>${a}</h2><span>${b}</span>${dayExtra(k)}`;
-    h += ev.length ? ev.map(e=>evCard(e)).join('') : k===selDay ? `<div class="empty" style="padding:18px"><b>Volno</b>Na tento den nic není.</div>` : '';
+    h += ev.length ? ev.map(e=>evCard(e)).join('') : k===selDay ? `<div class="free">Volno · nic v plánu</div>` : '';
     h += `</section>`; shown += ev.length;
   }
   if (!shown && !events.length) h += `<div class="empty"><b>Zatím prázdno</b>Přidejte první událost tlačítkem + nebo ji nadiktujte mikrofonem.</div>`;
@@ -551,7 +559,7 @@ function renderMonth(){
   }
   h += `</div>`;
   const ev = eventsOn(selDay); const [a,b] = dayLabel(selDay);
-  h += `<section class="day"><div class="day-h"><h2>${a}</h2><span>${b}</span>${dayExtra(selDay)}${ev.length?ev.map(e=>evCard(e)).join(''):'<div class="empty" style="padding:18px"><b>Volno</b>Na tento den nic není.</div>'}</section>`;
+  h += `<section class="day"><div class="day-h"><h2>${a}</h2><span>${b}</span>${dayExtra(selDay)}${ev.length?ev.map(e=>evCard(e)).join(''):'<div class="free">Volno · nic v plánu</div>'}</section>`;
   main.innerHTML = h;
   main.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ monthCursor = new Date(y, mo + +b.dataset.m, 1); render(); });
   main.querySelector('.mgrid').onclick = e => { const b=e.target.closest('.mc'); if(!b) return; selDay=b.dataset.k; if (parseKey(selDay).getMonth()!==mo) monthCursor=firstOfMonth(parseKey(selDay)); render(); };
@@ -956,7 +964,7 @@ function dialDraw(){
   }
   el.innerHTML = h;
   $('#btn-today').classList.toggle('show', Math.abs(dial.pos) > .5);
-  if (view==='list') $('#hdr-title').textContent = fmtMonth.format(parseKey(dKey(c))).split(' ')[0];
+  if (view==='list') $('#hdr-title').innerHTML = hdrTitle(parseKey(dKey(c)));
 }
 function dialSet(p, user){
   dial.pos = p; const c = Math.round(p);
