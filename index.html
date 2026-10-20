@@ -412,14 +412,28 @@ function renderWeek(){
     if (b.dataset.w){ selDay = addDays(selDay, +b.dataset.w); } else selDay = b.dataset.k;
     showPast=false; render(); window.scrollTo({top:0}); };
 }
-function evCard(e, withDate){
+const REPTXT = { daily:'každý den', workdays:'každý pracovní den', weekly:'každý týden', biweekly:'každý druhý týden', monthly:'každý měsíc', yearly:'každý rok' };
+function evCard(e, withDate, repKind){
   const m = memberOf(e.member_id); const s = new Date(e.starts_at); const en = e.ends_at ? new Date(e.ends_at) : null;
   const time = e.all_day ? `<div class="time" style="font-size:13px">celý<br>den</div>` : `<div class="time">${hm(s)}${en?`<small>${hm(en)}</small>`:''}</div>`;
   const tag = m ? `<span class="tag" style="background:${m.color}22;color:${m.color}">${esc(m.name)}</span>` : `<span class="tag" style="background:var(--accent-soft);color:var(--accent)">Celá rodina</span>`;
-  const rep = e.series_id ? `<span title="Opakuje se">↻</span>` : '';
-  return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${m?m.color:'var(--accent)'}"></span>${time}<div class="body">${withDate?`<div class="res-date">${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${esc(e.title)}</div><div class="meta">${tag}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
+  const rep = repKind ? `<span class="tag" style="background:var(--accent-soft);color:var(--accent)">↻ Opakuje se · ${REPTXT[repKind]||'pravidelně'}</span>` : e.series_id ? `<span title="Opakuje se">↻</span>` : '';
+  return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${m?m.color:'var(--accent)'}"></span>${time}<div class="body">${withDate?`<div class="res-date">${repKind?'Příště: ':''}${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${esc(e.title)}</div><div class="meta">${tag}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
+}
+function renderPerson(){
+  const m = memberOf(filter); if (!m){ filter = 'all'; renderList(); return; }
+  const from = selDay < todayKey() ? todayKey() : selDay;
+  const mine = events.filter(e => e.member_id===filter && evEndKey(e) >= from).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+  const seen = new Set(), once = [], reps = [];
+  mine.forEach(e => { if (e.series_id){ if (!seen.has(e.series_id)){ seen.add(e.series_id); reps.push(e); } } else once.push(e); });
+  let h = `<div class="day-h" style="margin-top:14px"><h2 style="color:${m.color}">${esc(m.name)}</h2><span>${from===todayKey()?'všechno od dneška':'od '+fmtDM.format(parseKey(from))}</span></div>`;
+  if (!once.length && !reps.length) h += `<div class="empty"><b>Nic v plánu</b>${esc(m.name)} zatím nemá žádné budoucí události.</div>`;
+  if (once.length) h += `<section class="day"><div class="day-h"><h2>Nadcházející</h2><span>${once.length}</span></div>${once.map(e=>evCard(e,true)).join('')}</section>`;
+  if (reps.length) h += `<section class="day"><div class="day-h"><h2>Opakující se</h2><span>${reps.length}</span></div>${reps.map(e=>evCard(e,true,inferRep(e))).join('')}</section>`;
+  $('#main').innerHTML = h;
 }
 function renderList(){
+  if (filter!=='all'){ renderPerson(); return; }
   const main = $('#main'); let h = '';
   const start = showPast ? addDays(selDay,-30) : selDay;
   let shown = 0;
@@ -899,7 +913,7 @@ function dialInit(){
   let raf = 0;
   window.addEventListener('scroll', () => { if (view!=='list' || dial.drag || dial.quiet) return; cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
     const lim = $('.top').getBoundingClientRect().bottom + 8;
-    const sec = [...document.querySelectorAll('#main .day')].find(s => s.getBoundingClientRect().bottom > lim + 30); if (!sec) return;
+    const sec = [...document.querySelectorAll('#main .day[id^="d-"]')].find(s => s.getBoundingClientRect().bottom > lim + 30); if (!sec) return;
     const i = dIdx(sec.id.slice(2)); if (i !== Math.round(dial.pos)){ dial.last = i; dialAnimate(i, false, 220); }
   }); }, { passive: true });
   dial.last = dIdx(selDay); dial.pos = dial.last; dialDraw();
