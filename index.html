@@ -863,11 +863,17 @@ function runSearch(){
   const res = events.filter(e => { const ns = idsOf(e).map(memberOf).filter(Boolean).map(m=>m.name).join(' '); const hay = norm(e.title+' '+(e.note||'')+' '+(ns||'cela rodina')); return words.every(w=>hay.includes(w)); });
   const fut = res.flatMap(e => e.rrule ? [nextOcc(e, t)].filter(Boolean) : evEndKey(e)>=t ? [e] : []).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
   const past = res.filter(e => !e.rrule && evEndKey(e)<t).sort((a,b)=>new Date(b.starts_at)-new Date(a.starts_at));
-  const nd = ndSearch(q);
-  if (!res.length && !nd.length){ box.innerHTML = `<div class="empty"><b>Nic nenalezeno</b>Zkuste jiné slovo.</div>`; return; }
-  box.innerHTML = (nd.length?`<div class="day"><div class="day-h"><h2>Jmeniny</h2><span>${nd.length}</span></div>${nd.map(x=>`<button class="ndhit" data-k="${x.k}"><span class="ndi">🌸</span><span><b>${esc(x.n)}</b><small>${esc(cap(fmtLong.format(parseKey(x.k))))} · ${x.d===0?'dnes':x.d===1?'zítra':'za '+x.d+(x.d<5?' dny':' dní')}</small></span></button>`).join('')}</div>`:'') + (fut.length?`<div class="day"><div class="day-h"><h2>Nadcházející</h2><span>${fut.length}</span></div>${fut.slice(0,100).map(e=>evCard(e,true,master(e).rrule)).join('')}</div>`:'') +
+  const nd = ndSearch(q), dc = dstSearch(q);
+  if (!res.length && !nd.length && !dc.length){ box.innerHTML = `<div class="empty"><b>Nic nenalezeno</b>Zkuste jiné slovo.</div>`; return; }
+  box.innerHTML = (dc.length?`<div class="day"><div class="day-h"><h2>Změna času</h2><span>${dc.length}</span></div>${dc.map(x=>`<button class="ndhit" data-k="${x.k}"><span class="ndi">🕐</span><span><b>${x.t}</b><small>${esc(cap(fmtLong.format(parseKey(x.k))))} ${x.k.slice(0,4)} · ${x.d===0?'dnes':x.d===1?'zítra':'za '+x.d+(x.d<5?' dny':' dní')}</small></span></button>`).join('')}</div>`:'') + (nd.length?`<div class="day"><div class="day-h"><h2>Jmeniny</h2><span>${nd.length}</span></div>${nd.map(x=>`<button class="ndhit" data-k="${x.k}"><span class="ndi">🌸</span><span><b>${esc(x.n)}</b><small>${esc(cap(fmtLong.format(parseKey(x.k))))} · ${x.d===0?'dnes':x.d===1?'zítra':'za '+x.d+(x.d<5?' dny':' dní')}</small></span></button>`).join('')}</div>`:'') + (fut.length?`<div class="day"><div class="day-h"><h2>Nadcházející</h2><span>${fut.length}</span></div>${fut.slice(0,100).map(e=>evCard(e,true,master(e).rrule)).join('')}</div>`:'') +
     (past.length?`<div class="day"><div class="day-h"><h2>Proběhlo</h2><span>${past.length}</span></div>${past.slice(0,50).map(e=>evCard(e,true)).join('')}</div>`:'');
   box.querySelectorAll('.ndhit').forEach(b => b.onclick = () => { filter = 'all'; selDay = b.dataset.k; showPast = false; show('app'); render(); window.scrollTo({top:0}); });
+}
+function dstSearch(q){
+  if (!q.split(/\s+/).some(w => /^(cas|zmen|letn|zimn|posun)/.test(w))) return [];
+  const t = todayKey(), y = +t.slice(0,4), out = [];
+  for (const yy of [y, y+1, y+2]) for (const [m, txt] of [[2,'Na letní čas · 2:00 → 3:00 (o hodinu méně spánku)'],[9,'Na zimní čas · 3:00 → 2:00 (o hodinu víc spánku)']]){ const k = lastSunday(yy, m); if (k >= t) out.push({ k, t: txt, d: dIdx(k) }); }
+  return out.slice(0, 2);
 }
 function ndSearch(q){
   if (q.length < 2) return [];
