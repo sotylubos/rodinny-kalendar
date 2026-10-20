@@ -21,11 +21,11 @@
 :root{
   --bg:#F6F3EE; --card:#FFFFFF; --card2:#FBF9F6; --ink:#1E2230; --muted:#737887; --line:#E8E3DB;
   --accent:#D9653B; --accent-ink:#fff; --accent-soft:#F8E3D9; --danger:#C8423A; --shadow:0 1px 2px rgba(30,34,48,.05),0 6px 20px rgba(30,34,48,.06);
-  --radius:18px;
+  --radius:18px; --fam:#7C5CD6; --fam-soft:rgba(124,92,214,.14);
 }
 @media (prefers-color-scheme: dark){
   :root{ --bg:#15171C; --card:#1F222A; --card2:#252932; --ink:#EEF0F4; --muted:#9AA0AE; --line:#2E323C;
-    --accent:#F07A4F; --accent-soft:#3A2820; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25); }
+    --accent:#F07A4F; --accent-soft:#3A2820; --fam:#A48DF2; --fam-soft:rgba(164,141,242,.18); --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25); }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,-apple-system,sans-serif;font-size:16px;-webkit-font-smoothing:antialiased}
@@ -315,8 +315,8 @@ function show(id){ ['loading','login','claim','noaccess','app','search'].forEach
 
 /* event day span */
 function idsOf(e){ return e.member_ids && e.member_ids.length ? e.member_ids : (e.member_id ? [e.member_id] : []); }
-function tagsOf(e){ const ms = idsOf(e).map(memberOf).filter(Boolean); return ms.length ? ms.map(m=>`<span class="tag" style="background:${m.color}22;color:${m.color}">${esc(m.name)}</span>`).join('') : `<span class="tag" style="background:var(--accent-soft);color:var(--accent)">Celá rodina</span>`; }
-function barOf(e){ const cs = idsOf(e).map(memberOf).filter(Boolean).map(m=>m.color); if (!cs.length) return 'var(--accent)'; if (cs.length===1) return cs[0]; return 'linear-gradient(' + cs.map((c,i)=>c+' '+(i*100/cs.length)+'% '+((i+1)*100/cs.length)+'%').join(',') + ')'; }
+function tagsOf(e){ const ms = idsOf(e).map(memberOf).filter(Boolean); return ms.length ? ms.map(m=>`<span class="tag" style="background:${m.color}22;color:${m.color}">${esc(m.name)}</span>`).join('') : `<span class="tag" style="background:var(--fam-soft);color:var(--fam)">Celá rodina</span>`; }
+function barOf(e){ const cs = idsOf(e).map(memberOf).filter(Boolean).map(m=>m.color); if (!cs.length) return 'var(--fam)'; if (cs.length===1) return cs[0]; return 'linear-gradient(' + cs.map((c,i)=>c+' '+(i*100/cs.length)+'% '+((i+1)*100/cs.length)+'%').join(',') + ')'; }
 function evStartKey(e){ return keyOf(new Date(e.starts_at)); }
 function evEndKey(e){ return e.all_day && e.ends_at ? keyOf(new Date(e.ends_at)) : evStartKey(e); }
 /* ---------- opakování (pravidla) ---------- */
@@ -485,7 +485,7 @@ function renderChips(){
 function weekStart(k){ const d=parseKey(k); const wd=(d.getDay()+6)%7; d.setDate(d.getDate()-wd); return keyOf(d); }
 function dotsFor(k, max){
   const ev = eventsOn(k); const cols = [];
-  ev.forEach(e=>{ const ms = idsOf(e).map(memberOf).filter(Boolean); (ms.length ? ms.map(m=>m.color) : ['var(--accent)']).forEach(c=>{ if(!cols.includes(c)) cols.push(c); }); });
+  ev.forEach(e=>{ const ms = idsOf(e).map(memberOf).filter(Boolean); (ms.length ? ms.map(m=>m.color) : ['var(--fam)']).forEach(c=>{ if(!cols.includes(c)) cols.push(c); }); });
   return cols.slice(0,max).map(c=>`<i style="background:${c}"></i>`).join('');
 }
 function renderWeek(){
@@ -504,7 +504,7 @@ function evCard(e, withDate, repKind){ CARDS[e.id] = e;
   const m = memberOf(e.member_id); const s = new Date(e.starts_at); const en = e.ends_at ? new Date(e.ends_at) : null;
   const time = e.all_day ? `<div class="time" style="font-size:13px">celý<br>den</div>` : `<div class="time">${hm(s)}${en?`<small>${hm(en)}</small>`:''}</div>`;
   const tag = tagsOf(e);
-  const rep = repKind ? `<span class="tag" style="background:var(--accent-soft);color:var(--accent)">↻ Opakuje se · ${REPTXT[repKind]||'pravidelně'}</span>` : master(e).rrule ? `<span title="Opakuje se">↻</span>` : '';
+  const rep = repKind ? `<span class="tag" style="background:var(--line);color:var(--muted)">↻ Opakuje se · ${REPTXT[repKind]||'pravidelně'}</span>` : master(e).rrule ? `<span title="Opakuje se">↻</span>` : '';
   return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${barOf(e)}"></span>${time}<div class="body">${withDate?`<div class="res-date">${repKind?'Příště: ':''}${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${iconFor(e.title)?`<span class="ic">${iconFor(e.title)}</span>`:''}${esc(e.title)}${ageOf(e)?`<span class="age"> · ${yearsTxt(ageOf(e))}</span>`:''}</div><div class="meta">${tag}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
 }
 function renderPerson(){
@@ -629,7 +629,7 @@ function openEditor(e, preset){
     <label class="field ${isBday(d.title)?'':'hidden'}" id="w-by"><span>Rok narození (aplikace pak ukáže věk)</span><input class="inp" id="f-by" type="number" inputmode="numeric" min="1900" max="2100" placeholder="např. 1956" value="${d.birth_year||''}"></label>
     <div class="field"><span>Kdo <small style="font-weight:600">(můžete vybrat víc lidí)</small></span><div class="who" id="f-who">
       ${members.map(m=>`<button data-id="${m.id}" data-c="${m.color}"><span class="dot" style="background:${m.color}"></span>${esc(m.name)}</button>`).join('')}
-      <button data-id="" data-c="var(--accent)"><span class="dot" style="background:var(--accent)"></span>Celá rodina</button></div></div>
+      <button data-id="" data-c="var(--fam)"><span class="dot" style="background:var(--fam)"></span>Celá rodina</button></div></div>
     <div class="toggle"><span>Celý den</span><button class="sw" id="f-allday" aria-label="Celý den"></button></div>
     <div class="row2"><label class="field"><span id="l-date">Datum</span><input class="inp" type="date" id="f-date" value="${d.date}"></label>
       <label class="field" id="w-enddate"><span>Do</span><input class="inp" type="date" id="f-enddate" value="${d.endDate}"></label></div>
