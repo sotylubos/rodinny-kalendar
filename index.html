@@ -86,7 +86,7 @@ main{padding:4px 16px calc(230px + env(safe-area-inset-bottom))}
 .ev .time small{display:block;color:var(--muted);font-weight:600;font-size:12.5px}
 .ev .body{flex:1;min-width:0}
 .ev .title{font-weight:700;font-size:16px;line-height:1.3;word-wrap:break-word}
-.ev .meta{display:flex;gap:8px;align-items:center;margin-top:4px;color:var(--muted);font-size:13px;font-weight:600}
+.ev .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px;color:var(--muted);font-size:13px;font-weight:600}
 .tag{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:12.5px;font-weight:700}
 .empty{text-align:center;color:var(--muted);padding:48px 20px;line-height:1.6}
 .empty b{display:block;color:var(--ink);font-size:17px;margin-bottom:4px}
@@ -303,10 +303,13 @@ function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){
 function show(id){ ['loading','login','claim','noaccess','app','search'].forEach(s=>$('#scr-'+s).classList.toggle('hidden', s!==id)); }
 
 /* event day span */
+function idsOf(e){ return e.member_ids && e.member_ids.length ? e.member_ids : (e.member_id ? [e.member_id] : []); }
+function tagsOf(e){ const ms = idsOf(e).map(memberOf).filter(Boolean); return ms.length ? ms.map(m=>`<span class="tag" style="background:${m.color}22;color:${m.color}">${esc(m.name)}</span>`).join('') : `<span class="tag" style="background:var(--accent-soft);color:var(--accent)">Celá rodina</span>`; }
+function barOf(e){ const cs = idsOf(e).map(memberOf).filter(Boolean).map(m=>m.color); if (!cs.length) return 'var(--accent)'; if (cs.length===1) return cs[0]; return 'linear-gradient(' + cs.map((c,i)=>c+' '+(i*100/cs.length)+'% '+((i+1)*100/cs.length)+'%').join(',') + ')'; }
 function evStartKey(e){ return keyOf(new Date(e.starts_at)); }
 function evEndKey(e){ return e.all_day && e.ends_at ? keyOf(new Date(e.ends_at)) : evStartKey(e); }
 function eventsOn(k){
-  return events.filter(e => (filter==='all' || e.member_id===filter || (filter!=='all' && !e.member_id)) && evStartKey(e)<=k && evEndKey(e)>=k)
+  return events.filter(e => (filter==='all' || !idsOf(e).length || idsOf(e).includes(filter)) && evStartKey(e)<=k && evEndKey(e)>=k)
     .sort((a,b)=> (b.all_day-a.all_day) || (new Date(a.starts_at)-new Date(b.starts_at)));
 }
 
@@ -399,7 +402,7 @@ function renderChips(){
 function weekStart(k){ const d=parseKey(k); const wd=(d.getDay()+6)%7; d.setDate(d.getDate()-wd); return keyOf(d); }
 function dotsFor(k, max){
   const ev = eventsOn(k); const cols = [];
-  ev.forEach(e=>{ const c = (memberOf(e.member_id)||{}).color || 'var(--accent)'; if(!cols.includes(c)) cols.push(c); });
+  ev.forEach(e=>{ const ms = idsOf(e).map(memberOf).filter(Boolean); (ms.length ? ms.map(m=>m.color) : ['var(--accent)']).forEach(c=>{ if(!cols.includes(c)) cols.push(c); }); });
   return cols.slice(0,max).map(c=>`<i style="background:${c}"></i>`).join('');
 }
 function renderWeek(){
@@ -416,14 +419,14 @@ const REPTXT = { daily:'každý den', workdays:'každý pracovní den', weekly:'
 function evCard(e, withDate, repKind){
   const m = memberOf(e.member_id); const s = new Date(e.starts_at); const en = e.ends_at ? new Date(e.ends_at) : null;
   const time = e.all_day ? `<div class="time" style="font-size:13px">celý<br>den</div>` : `<div class="time">${hm(s)}${en?`<small>${hm(en)}</small>`:''}</div>`;
-  const tag = m ? `<span class="tag" style="background:${m.color}22;color:${m.color}">${esc(m.name)}</span>` : `<span class="tag" style="background:var(--accent-soft);color:var(--accent)">Celá rodina</span>`;
+  const tag = tagsOf(e);
   const rep = repKind ? `<span class="tag" style="background:var(--accent-soft);color:var(--accent)">↻ Opakuje se · ${REPTXT[repKind]||'pravidelně'}</span>` : e.series_id ? `<span title="Opakuje se">↻</span>` : '';
-  return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${m?m.color:'var(--accent)'}"></span>${time}<div class="body">${withDate?`<div class="res-date">${repKind?'Příště: ':''}${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${esc(e.title)}</div><div class="meta">${tag}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
+  return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${barOf(e)}"></span>${time}<div class="body">${withDate?`<div class="res-date">${repKind?'Příště: ':''}${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${esc(e.title)}</div><div class="meta">${tag}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
 }
 function renderPerson(){
   const m = memberOf(filter); if (!m){ filter = 'all'; renderList(); return; }
   const from = selDay < todayKey() ? todayKey() : selDay;
-  const mine = events.filter(e => e.member_id===filter && evEndKey(e) >= from).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+  const mine = events.filter(e => idsOf(e).includes(filter) && evEndKey(e) >= from).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
   const seen = new Set(), once = [], reps = [];
   mine.forEach(e => { if (e.series_id){ if (!seen.has(e.series_id)){ seen.add(e.series_id); reps.push(e); } } else once.push(e); });
   let h = `<div class="day-h" style="margin-top:14px"><h2 style="color:${m.color}">${esc(m.name)}</h2><span>${from===todayKey()?'všechno od dneška':'od '+fmtDM.format(parseKey(from))}</span></div>`;
@@ -501,7 +504,7 @@ function openDetail(e){
     <div class="detail-title">${esc(e.title)}</div>
     <div class="detail-row">${IC.cal}<span>${esc(dateTxt)}</span></div>
     <div class="detail-row">${IC.clock}<span>${timeTxt}</span></div>
-    <div class="detail-row">${IC.user}<span>${m?`<span class="tag" style="background:${m.color}22;color:${m.color}">${esc(m.name)}</span>`:'Celá rodina'}</span></div>
+    <div class="detail-row">${IC.user}<span class="meta" style="margin:0;flex-wrap:wrap">${tagsOf(e)}</span></div>
     ${e.series_id?`<div class="detail-row">${IC.rep}<span>Opakovaná událost</span></div>`:''}
     ${e.note?`<p class="note">${esc(e.note)}</p>`:''}
     <div class="actions" style="margin-top:18px"><button class="btn ghost" id="d-edit">Upravit</button><button class="btn ghost" id="d-del" style="color:var(--danger)">Smazat</button></div>`,
@@ -530,7 +533,7 @@ function confirmDelete(e){
 function openEditor(e, preset){
   const isNew = !e;
   const d = e ? {
-      title:e.title, member_id:e.member_id, date:evStartKey(e), endDate:evEndKey(e), all_day:e.all_day,
+      title:e.title, member_id:e.member_id, ids:idsOf(e), date:evStartKey(e), endDate:evEndKey(e), all_day:e.all_day,
       start: e.all_day?'09:00':hm(new Date(e.starts_at)), end: (!e.all_day && e.ends_at)?hm(new Date(e.ends_at)):'', note:e.note||''
     } : Object.assign({ title:'', member_id: me.id, date: selDay < todayKey() ? todayKey() : selDay, endDate:null, all_day:false, start:'09:00', end:'10:00', note:'' }, preset||{});
   if (!d.endDate) d.endDate = d.date;
@@ -539,7 +542,7 @@ function openEditor(e, preset){
   openSheet(`
     <h3>${isNew?'Nová událost':'Upravit událost'}</h3>
     <label class="field"><span>Co</span><input class="inp" id="f-title" placeholder="Zubař, práce, trénink…" value="${esc(d.title)}" maxlength="200"></label>
-    <div class="field"><span>Kdo</span><div class="who" id="f-who">
+    <div class="field"><span>Kdo <small style="font-weight:600">(můžete vybrat víc lidí)</small></span><div class="who" id="f-who">
       ${members.map(m=>`<button data-id="${m.id}" data-c="${m.color}"><span class="dot" style="background:${m.color}"></span>${esc(m.name)}</button>`).join('')}
       <button data-id="" data-c="var(--accent)"><span class="dot" style="background:var(--accent)"></span>Celá rodina</button></div></div>
     <div class="toggle"><span>Celý den</span><button class="sw" id="f-allday" aria-label="Celý den"></button></div>
@@ -555,11 +558,11 @@ function openEditor(e, preset){
     <label class="field"><span>Poznámka</span><textarea class="inp" id="f-note" placeholder="Adresa, co vzít s sebou…">${esc(d.note)}</textarea></label>
     <div class="actions"><button class="btn ghost" id="f-cancel">Zrušit</button><button class="btn" id="f-save">Uložit</button></div>`,
   s => {
-    let who = d.member_id || '', allDay = d.all_day;
-    const setWho = () => s.querySelectorAll('#f-who button').forEach(b => { const on=b.dataset.id===who; b.classList.toggle('on',on); b.style.background = on ? b.dataset.c : ''; });
+    let who = d.ids ? [...d.ids] : (d.member_id ? [d.member_id] : []), allDay = d.all_day;
+    const setWho = () => s.querySelectorAll('#f-who button').forEach(b => { const on = b.dataset.id ? who.includes(b.dataset.id) : !who.length; b.classList.toggle('on',on); b.style.background = on ? b.dataset.c : ''; });
     const setAll = () => { s.querySelector('#f-allday').classList.toggle('on',allDay); s.querySelector('#w-times').classList.toggle('hidden',allDay); s.querySelector('#w-enddate').classList.toggle('hidden',!allDay); s.querySelector('#l-date').textContent = allDay?'Od':'Datum'; };
     setWho(); setAll();
-    s.querySelector('#f-who').onclick = ev => { const b=ev.target.closest('button'); if(!b) return; who=b.dataset.id; setWho(); };
+    s.querySelector('#f-who').onclick = ev => { const b=ev.target.closest('button'); if(!b) return; const id=b.dataset.id; if (!id) who = []; else who = who.includes(id) ? who.filter(x=>x!==id) : [...who, id]; setWho(); };
     s.querySelector('#f-allday').onclick = () => { allDay=!allDay; setAll(); };
     s.querySelector('#f-date').onchange = ev => { const ed=s.querySelector('#f-enddate'); if (ed.value < ev.target.value) ed.value = ev.target.value; };
     s.querySelector('#f-start').onchange = ev => { const en=s.querySelector('#f-end'); if(!en.value || en.value<=ev.target.value){ const [h,mi]=ev.target.value.split(':').map(Number); en.value=pad((h+1)%24)+':'+pad(mi); } };
@@ -578,7 +581,7 @@ function openEditor(e, preset){
         let starts, ends;
         if (allDay){ starts = parseKey(dk); const span = Math.max(0, Math.round((parseKey(endDate)-parseKey(date))/864e5)); ends = parseKey(addDays(dk,span)); ends.setHours(23,59); }
         else { starts = new Date(dk+'T'+st); ends = et ? new Date(dk+'T'+et) : null; if (ends && ends<=starts) ends.setDate(ends.getDate()+1); }
-        return { title, member_id: who || null, all_day: allDay, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, note };
+        return { title, member_id: who[0] || null, member_ids: who, all_day: allDay, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, note };
       };
       const btn = s.querySelector('#f-save'); btn.disabled = true; btn.textContent = 'Ukládám…';
       let error;
@@ -773,7 +776,7 @@ function runSearch(){
   if (!q){ box.innerHTML = `<div class="empty"><b>Co hledáte?</b>Hledá v názvech, poznámkách i jménech.</div>`; return; }
   const words = q.split(/\s+/);
   const t = todayKey();
-  const res = events.filter(e => { const m = memberOf(e.member_id); const hay = norm(e.title+' '+(e.note||'')+' '+(m?m.name:'cela rodina')); return words.every(w=>hay.includes(w)); });
+  const res = events.filter(e => { const ns = idsOf(e).map(memberOf).filter(Boolean).map(m=>m.name).join(' '); const hay = norm(e.title+' '+(e.note||'')+' '+(ns||'cela rodina')); return words.every(w=>hay.includes(w)); });
   const fut = res.filter(e=>evEndKey(e)>=t), past = res.filter(e=>evEndKey(e)<t).reverse();
   if (!res.length){ box.innerHTML = `<div class="empty"><b>Nic nenalezeno</b>Zkuste jiné slovo.</div>`; return; }
   box.innerHTML = (fut.length?`<div class="day"><div class="day-h"><h2>Nadcházející</h2><span>${fut.length}</span></div>${fut.slice(0,100).map(e=>evCard(e,true)).join('')}</div>`:'') +
