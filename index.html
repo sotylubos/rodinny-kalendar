@@ -412,7 +412,7 @@ function newsList(){
 function newsHtml(){
   const L = newsList(); if (!L.length) return '';
   const ago = d => { const m = Math.round((Date.now() - d) / 6e4); return m < 60 ? (m < 2 ? 'teď' : 'před ' + m + ' min') : m < 1440 ? 'před ' + Math.round(m/60) + ' h' : fmtDM.format(d); };
-  return `<div class="news"><div class="news-h">🆕 Novinky</div>` + L.map(it => {
+  return `<div class="news"><div class="news-h">🆕 Nově přidané</div>` + L.map(it => {
     const w = memberOf(it.who) || { name: '?', color: 'var(--muted)' }, e = it.e;
     const fem = /^m[aá]m/i.test(w.name);
     const verb = it.kind === 'chg' ? (fem ? 'upravila' : 'upravil') : (fem ? 'přidala' : 'přidal');
@@ -1188,7 +1188,7 @@ function openHelp(){
     ${sec('🗓️','Přehled a Měsíc','Přehled = seznam dní pod sebou. Měsíc = celý měsíc s tečkami, kdo má kdy program; klepnutím na den uvidíte jeho události.')}
     ${sec('✏️','Úprava a mazání','Klepněte na událost → Upravit / Smazat. U opakované zvolíte „Jen tuto“, nebo „Tuto i všechny další“.')}
     ${sec('🙋','Kdo se přidá?','Zapněte u události přepínač „Kdo se přidá?“ a ostatním přijde pozvánka. V události pak uvidíte, kdo jde ✓, kdo nejde ✕ a kdo ještě neodpověděl.')}
-    ${sec('🆕','Novinky','Když někdo přidá nebo upraví událost, objeví se na kolečku vpravo nahoře oranžové číslo. Klepněte na něj a nahoře uvidíte, co je nového. Novinky přijdou i ve večerním přehledu v 19:00.')}
+    ${sec('🆕','Nově přidané události','Když někdo přidá nebo upraví událost, objeví se na kolečku vpravo nahoře oranžové číslo. Klepněte na něj a nahoře uvidíte, co kdo přidal nebo upravil. Nově přidané události přijdou i ve večerním přehledu v 19:00.')}
     ${sec('🔍','Hledání','Lupa nahoře. Najde události, jména lidí, jmeniny (např. „Lukáš“) i změny času („čas“).')}
     ${sec('🎂','Narozeniny','Když název obsahuje „narozeniny“, objeví se pole pro rok narození a kalendář pak ukazuje věk.')}
     ${sec('🌸','Jmeniny, svátky, změna času','U každého dne vpravo drobně jmeniny. Státní svátky červeně, změna času tyrkysově.')}
