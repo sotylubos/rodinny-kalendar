@@ -92,6 +92,21 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .rsvp.wait{opacity:.75}
 @media (prefers-color-scheme: dark){ .rsvp.yes .st{background:#173A26;color:#7BD69C} .rsvp.no .st{background:#3D1C1C;color:#F2A3A3} .rsvp.host .st{background:#3A3215;color:#F5D46B} .rsvp-h span{color:#7BD69C} }
 @media (prefers-color-scheme: dark){ .tag.inv{background:#3A3215;color:#F5D46B} }
+#btn-settings{position:relative;overflow:visible}
+.nbadge{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;border:2px solid var(--bg);font-family:Manrope,system-ui,sans-serif}
+.news{background:var(--card);border-radius:18px;padding:10px 12px 4px;box-shadow:var(--shadow);margin:0 0 14px}
+.news-h{font-weight:800;font-size:15px;margin:2px 2px 6px}
+.nw{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 2px;border-top:1px solid var(--line);background:none;color:var(--ink)}
+.nw:first-of-type{border-top:0}
+.nw .avatar{width:30px;height:30px;font-size:13px;flex:none}
+.nw-t{flex:1;min-width:0;display:flex;flex-direction:column;font-size:14px;line-height:1.3}
+.nw-t i{font-style:normal;font-weight:700}
+.nw-t small{color:var(--muted);font-size:12.5px;font-weight:600;margin-top:2px}
+.nw-ago{font-size:11.5px;color:var(--muted);font-weight:700;flex:none;align-self:flex-start;margin-top:3px}
+.nw.fresh .nw-ago{color:var(--accent)}
+.nw.fresh .nw-ago::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:5px;vertical-align:1px}
+.nw-inv{color:#7A5C00}
+@media (prefers-color-scheme: dark){ .nw-inv{color:#F5D46B} }
 .fam{background:var(--card);border-radius:18px;padding:0 14px;box-shadow:var(--shadow);margin:6px 0 16px}
 .fam summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 0;cursor:pointer}
 .fam summary::-webkit-details-marker{display:none}
@@ -374,6 +389,37 @@ function evEndKey(e){ return e.all_day && e.ends_at ? keyOf(new Date(e.ends_at))
 /* ---------- opakování (pravidla) ---------- */
 let occ = [], byDay = new Map();
 function master(e){ return e._m || e; }
+function newsSeen(){ return me && me.news_seen_at ? new Date(me.news_seen_at) : new Date(Date.now() - 3*864e5); }
+function newsList(){
+  if (!me) return [];
+  const seen = newsSeen(), lim = Date.now() - 14*864e5, t = todayKey(), out = [], key = new Set();
+  events.forEach(e => {
+    const add = e.created_at && e.author && e.author !== me.id ? new Date(e.created_at) : null;
+    const chg = e.changed_at && e.changed_by && e.changed_by !== me.id ? new Date(e.changed_at) : null;
+    const pend = e.invite && e.inviter && e.inviter !== me.id && !(e.going||[]).includes(me.id) && !(e.declined||[]).includes(me.id) && nextOcc(e, t);
+    let it = null;
+    if (chg && (!add || chg - add > 120000)) it = { e, who: e.changed_by, at: chg, kind: 'chg' };
+    else if (add) it = { e, who: e.author, at: add, kind: 'add' };
+    if (it && it.at < lim && !pend) return;
+    if (!it && pend) it = { e, who: e.inviter, at: new Date(e.created_at || 0), kind: 'add' };
+    if (!it) return;
+    it.pend = !!pend; it.fresh = it.at > seen;
+    const k = e.title.trim().toLowerCase() + '|' + it.who; if (key.has(k)) return; key.add(k);
+    out.push(it);
+  });
+  return out.sort((a,b) => (b.pend - a.pend) || (b.at - a.at)).slice(0, 25);
+}
+function newsHtml(){
+  const L = newsList(); if (!L.length) return '';
+  const ago = d => { const m = Math.round((Date.now() - d) / 6e4); return m < 60 ? (m < 2 ? 'teď' : 'před ' + m + ' min') : m < 1440 ? 'před ' + Math.round(m/60) + ' h' : fmtDM.format(d); };
+  return `<div class="news"><div class="news-h">🆕 Novinky</div>` + L.map(it => {
+    const w = memberOf(it.who) || { name: '?', color: 'var(--muted)' }, e = it.e;
+    const fem = /^m[aá]m/i.test(w.name);
+    const verb = it.kind === 'chg' ? (fem ? 'upravila' : 'upravil') : (fem ? 'přidala' : 'přidal');
+    const o = nextOcc(e, todayKey()) || e; const when = dayLabel(evStartKey(o)).join(' ') + (o.all_day ? '' : ' v ' + hm(new Date(o.starts_at)));
+    return `<button class="nw ${it.fresh ? 'fresh' : ''}" data-nid="${e.id}"><span class="avatar" style="background:${w.color}">${esc(w.name[0])}</span><span class="nw-t"><span><b>${esc(w.name)}</b> ${verb} <i>${esc(e.title)}</i></span><small>${esc(when)}${it.pend ? ' · <b class="nw-inv">🙋 čeká na tvou odpověď</b>' : ''}</small></span><span class="nw-ago">${ago(it.at)}</span></button>`;
+  }).join('') + `</div>`;
+}
 function occDates(e, from, to){
   const s = evStartKey(e), span = Math.round((parseKey(evEndKey(e)) - parseKey(s))/864e5);
   if (!e.rrule) return (s <= to && addDays(s, span) >= from) ? [s] : [];
@@ -525,7 +571,8 @@ function render(){ renderCore(); dialSync(); }
 function renderCore(){
   if (!me) return;
   rebuildOcc();
-  const av = $('#btn-settings'); av.style.background = me.color; av.textContent = me.name[0];
+  const av = $('#btn-settings'); av.style.background = me.color; const nn = newsList().filter(x => x.fresh).length;
+  av.innerHTML = esc(me.name[0]) + (nn ? `<span class="nbadge">${nn > 9 ? '9+' : nn}</span>` : '');
   $('#hdr-title').innerHTML = hdrTitle(view==='list' ? parseKey(selDay) : monthCursor);
   renderChips();
   if (view==='list') renderList(); else renderMonth();
@@ -984,6 +1031,7 @@ function ndSearch(q){
 $('#btn-settings').onclick = openSettings;
 function openSettings(){
   openSheet(`
+    ${newsHtml()}
     <div class="actions" style="margin:0 0 12px"><button class="btn ghost" id="s-help">❓ Nápověda</button><button class="btn ghost" id="s-idea">💡 Mám nápad</button></div>
     <div class="toggle"><span>Upozornění v 7:00 a 19:00<br><small style="color:var(--muted);font-weight:500">Ráno co je dnes, večer co je zítra</small></span><button class="sw" id="s-push" aria-label="Upozornění"></button></div>
     <p class="hint" id="s-push-hint"></p>
@@ -1003,6 +1051,9 @@ function openSettings(){
     s.querySelector('#s-logout').onclick = logout;
     initPushToggle(s);
     s.querySelector('#s-help').onclick = openHelp;
+    s.querySelectorAll('[data-nid]').forEach(b => b.onclick = () => { const e = events.find(x => x.id === b.dataset.nid); if (!e) return; const o = nextOcc(e, todayKey()); openDetail(o || e); });
+    if (newsList().some(x => x.fresh)){ const t = new Date().toISOString(); me.news_seen_at = t; const mm = members.find(x => x.id === me.id); if (mm) mm.news_seen_at = t;
+      sb.from('members').update({ news_seen_at: t }).eq('id', me.id).then(()=>{}); setTimeout(() => { const av = $('#btn-settings'); const b = av && av.querySelector('.nbadge'); if (b) b.remove(); try { saveCache(); } catch(_){} }, 400); }
     s.querySelector('#s-idea').onclick = openIdeas;
     s.querySelector('#s-save').onclick = async () => {
       const rows = [...s.querySelectorAll('.mem')].map(el => ({ id: el.dataset.id, name: el.querySelector('.s-name').value.trim() || 'Člen', email: el.querySelector('.s-mail').value.trim().toLowerCase() || null, color: el.querySelector('.swatches .on')?.dataset.c }));
@@ -1137,6 +1188,7 @@ function openHelp(){
     ${sec('🗓️','Přehled a Měsíc','Přehled = seznam dní pod sebou. Měsíc = celý měsíc s tečkami, kdo má kdy program; klepnutím na den uvidíte jeho události.')}
     ${sec('✏️','Úprava a mazání','Klepněte na událost → Upravit / Smazat. U opakované zvolíte „Jen tuto“, nebo „Tuto i všechny další“.')}
     ${sec('🙋','Kdo se přidá?','Zapněte u události přepínač „Kdo se přidá?“ a ostatním přijde pozvánka. V události pak uvidíte, kdo jde ✓, kdo nejde ✕ a kdo ještě neodpověděl.')}
+    ${sec('🆕','Novinky','Když někdo přidá nebo upraví událost, objeví se na kolečku vpravo nahoře oranžové číslo. Klepněte na něj a nahoře uvidíte, co je nového. Novinky přijdou i ve večerním přehledu v 19:00.')}
     ${sec('🔍','Hledání','Lupa nahoře. Najde události, jména lidí, jmeniny (např. „Lukáš“) i změny času („čas“).')}
     ${sec('🎂','Narozeniny','Když název obsahuje „narozeniny“, objeví se pole pro rok narození a kalendář pak ukazuje věk.')}
     ${sec('🌸','Jmeniny, svátky, změna času','U každého dne vpravo drobně jmeniny. Státní svátky červeně, změna času tyrkysově.')}
