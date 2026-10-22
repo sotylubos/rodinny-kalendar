@@ -226,6 +226,9 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
 .listen p{margin:0;color:var(--muted);font-weight:600;text-align:center}
 .preview{background:var(--card);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin:4px 0 14px}
 .preview .pt{font-weight:800;font-size:17px}
+.qm-h{font-weight:800;font-size:14px;color:var(--muted);margin:2px 2px 8px}
+.preview.qm{display:flex;gap:12px;align-items:flex-start;margin:0 0 8px;cursor:pointer}
+.preview.qm input{width:22px;height:22px;margin:2px 0 0;accent-color:var(--accent);flex:none}
 .preview .pm{color:var(--muted);font-weight:600;font-size:14px;margin-top:4px}
 .hint{font-size:13px;color:var(--muted);line-height:1.5;margin:-4px 2px 14px}
 
@@ -954,38 +957,90 @@ function parseCz(text){
 /* ---------- voice / quick add ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
-function stopVoice(){ if (rec){ try{ rec.onend=null; rec.abort(); }catch(e){} rec=null; } }
+let listening = false;
+function stopVoice(){ listening = false; if (rec){ try{ rec.onend=null; rec.abort(); }catch(e){} rec=null; } }
 function describe(p){
   const m = p.member_id ? memberOf(p.member_id) : null;
   const when = (p.date ? dayLabel(p.date).join(' ') : dayLabel(selDay < todayKey() ? todayKey() : selDay).join(' ')) + (p.all_day ? ', celý den' : p.start ? ', ' + p.start + (p.end ? '–'+p.end : '') : '');
   return `<div class="pt">${esc(p.title || '…')}</div><div class="pm">${esc(when)} · ${p.member_id===null?'Celá rodina':esc(m ? m.name : me.name)}</div>`;
 }
+/* split a dictation into several events */
+const SPLIT_WORDS = /\s*(?:[.;!?\n]+|\b(?:a\s+)?(?:dalsi|dale|potom|pak|nova udalost|a jeste|a taky|a take)\b)[\s,]*/g;
+function splitCz(text){
+  const src = String(text||'').normalize('NFC'); const n = norm(src); const cuts = [];
+  let m; SPLIT_WORDS.lastIndex = 0;
+  while ((m = SPLIT_WORDS.exec(n))){ if (!m[0].length){ SPLIT_WORDS.lastIndex++; continue; } cuts.push([m.index, m.index + m[0].length]); }
+  // " a " followed by a person, a day or a date starts a new event
+  const stems = members.map(mb => { let st = norm(mb.name).trim(); if (st.length > 3) st = st.slice(0,-1); return st.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).filter(Boolean);
+  const AND = new RegExp('\\s+a\\s+(?=(?:' + [...stems, 'zitra', 'pozitri', 'dnes', 'pondeli', 'utery', 'v pondeli', 'v utery', 've stredu', 've ctvrtek', 'v patek', 'v sobotu', 'v nedeli', 'pristi', '\\d{1,2}\\.'].join('|') + ')\\w*\\b)', 'g');
+  while ((m = AND.exec(n))){ const w = n.slice(m.index + m[0].length).split(/\s/)[0]; if (['ma','mam','mame','mate','maji'].includes(w)) continue; cuts.push([m.index, m.index + m[0].length]); }
+  cuts.sort((x,y) => x[0]-y[0]);
+  const parts = []; let pos = 0;
+  cuts.forEach(([s0,e0]) => { if (s0 < pos) return; parts.push(src.slice(pos, s0)); pos = e0; });
+  parts.push(src.slice(pos));
+  return parts.map(p => p.trim()).filter(p => norm(p).replace(/[^a-z0-9]/g,'').length > 2);
+}
+function quickRow(p){
+  const date = p.date || (selDay < todayKey() ? todayKey() : selDay);
+  const ids = p.member_id === null ? [] : [p.member_id || me.id];
+  const allDay = p.all_day || !p.start;
+  let starts, ends;
+  if (allDay){ starts = parseKey(date); ends = parseKey(date); ends.setHours(23,59); }
+  else { starts = new Date(date+'T'+p.start); ends = p.end ? new Date(date+'T'+p.end) : null; if (ends && ends <= starts) ends.setDate(ends.getDate()+1); }
+  return { title: p.title || 'Událost', invite: !!p.invite, inviter: p.invite ? me.id : null, birth_year: null, member_id: ids[0] || null, member_ids: ids, all_day: allDay, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, note: null, rrule: null, rrule_until: null };
+}
 function openQuick(listen){
   openSheet(`
     <h3>Přidat rychle</h3>
     <div class="listen ${listen&&SR?'':'hidden'}" id="q-listen"><button class="orb" id="q-orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><p id="q-status">Poslouchám…</p></div>
-    <label class="field"><input class="inp" id="q-text" placeholder="Např. Michal zubař ve čtvrtek v 15:30" autocomplete="off"></label>
-    <div class="hint" id="q-hint">${SR ? 'Mluvte nebo pište přirozeně: „Máma v práci zítra od 8 do 16“, „dovolená 3. 11. celý den“.' : 'Klepněte do pole a použijte mikrofon na klávesnici. Pište přirozeně: „Máma v práci zítra od 8 do 16“.'}</div>
-    <div class="preview hidden" id="q-prev"></div>
+    <label class="field"><textarea class="inp" id="q-text" rows="3" style="height:auto;min-height:56px;resize:none;line-height:1.4;padding-top:12px;padding-bottom:12px" placeholder="Např. Matěj zubař ve čtvrtek v 15:30, další máma kadeřnice v sobotu v 10" autocomplete="off"></textarea></label>
+    <div class="hint" id="q-hint">${SR ? 'Mluvte klidně déle, mikrofon vypnete až klepnutím. Víc událostí oddělte slovem „další“: „Matěj zubař ve čtvrtek v 15:30, další máma kadeřnice v sobotu v 10“.' : 'Klepněte do pole a použijte mikrofon na klávesnici. Víc událostí oddělte slovem „další“.'}</div>
+    <div id="q-prev"></div>
     <div class="actions"><button class="btn ghost" id="q-cancel">Zrušit</button><button class="btn" id="q-go">Pokračovat</button></div>`,
   s => {
-    const inp = s.querySelector('#q-text'), prev = s.querySelector('#q-prev');
-    const upd = () => { const v=inp.value.trim(); prev.classList.toggle('hidden', !v); if (v) prev.innerHTML = describe(parseCz(v)); };
+    const inp = s.querySelector('#q-text'), prev = s.querySelector('#q-prev'), go = s.querySelector('#q-go');
+    const orb = s.querySelector('#q-orb'), st = s.querySelector('#q-status');
+    let items = [];
+    const upd = () => {
+      const segs = splitCz(inp.value);
+      const old = items; items = segs.map((t, i) => ({ p: parseCz(t), on: old[i] ? old[i].on : true }));
+      if (!items.length){ prev.innerHTML = ''; go.textContent = 'Pokračovat'; return; }
+      if (items.length === 1){ prev.innerHTML = `<div class="preview">${describe(items[0].p)}</div>`; go.textContent = 'Pokračovat'; return; }
+      prev.innerHTML = `<div class="qm-h">Rozpoznal jsem ${items.length} ${items.length < 5 ? 'události' : 'událostí'}:</div>` + items.map((it, i) =>
+        `<label class="preview qm"><input type="checkbox" data-i="${i}" ${it.on ? 'checked' : ''}><span>${describe(Object.assign({}, it.p, it.p.start ? {} : { all_day: true }))}</span></label>`).join('');
+      prev.querySelectorAll('input[type=checkbox]').forEach(c => c.onchange = () => { items[+c.dataset.i].on = c.checked; cnt(); });
+      cnt();
+    };
+    const cnt = () => { const k = items.filter(x => x.on).length; go.textContent = items.length > 1 ? (k ? 'Uložit ' + k + (k === 1 ? ' událost' : k < 5 ? ' události' : ' událostí') : 'Nic nevybráno') : 'Pokračovat'; go.disabled = items.length > 1 && !k; };
     inp.oninput = upd;
-    inp.onkeydown = e => { if (e.key==='Enter') s.querySelector('#q-go').click(); };
     s.querySelector('#q-cancel').onclick = closeSheet;
-    s.querySelector('#q-go').onclick = () => { stopVoice(); const p = parseCz(inp.value); openEditor(null, p); };
-    s.querySelector('#q-orb').onclick = () => { if (rec) stopVoice(), s.querySelector('#q-orb').classList.remove('on'), s.querySelector('#q-status').textContent='Klepněte a mluvte'; else startRec(s); };
-    if (listen && SR) startRec(s); else setTimeout(()=>inp.focus(), 300);
-    function startRec(s){
-      const orb = s.querySelector('#q-orb'), st = s.querySelector('#q-status');
-      try {
-        rec = new SR(); rec.lang = 'cs-CZ'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
-        rec.onresult = ev => { let t=''; for (const r of ev.results) t += r[0].transcript; inp.value = t; upd(); };
-        rec.onerror = ev => { st.textContent = ev.error==='not-allowed' ? 'Mikrofon není povolený — napište to prosím.' : 'Nerozuměl jsem, zkuste znovu.'; orb.classList.remove('on'); };
-        rec.onend = () => { orb.classList.remove('on'); rec = null; if (inp.value.trim()){ st.textContent = 'Zkontrolujte a pokračujte'; } else if (!/není/.test(st.textContent)) st.textContent = 'Klepněte a mluvte'; };
-        rec.start(); orb.classList.add('on'); st.textContent = 'Poslouchám…';
-      } catch(e){ st.textContent = 'Hlas teď nejde — napište to prosím.'; orb.classList.remove('on'); }
+    go.onclick = async () => {
+      stopVoice(); orb.classList.remove('on'); upd();
+      if (items.length <= 1){ openEditor(null, parseCz(inp.value)); return; }
+      const rows = items.filter(x => x.on).map(x => quickRow(x.p)); if (!rows.length) return;
+      go.disabled = true; go.textContent = 'Ukládám…';
+      const { data, error } = await sb.from('events').insert(rows).select();
+      if (error){ go.disabled = false; cnt(); toast('Uložení se nepovedlo'); return; }
+      (data || []).filter(r => r.invite).forEach(r => sb.functions.invoke('invite', { body: { event_id: r.id, kind: 'new' } }).catch(()=>{}));
+      await loadEvents(); closeSheet(); toast('Přidáno ' + rows.length + (rows.length < 5 ? ' události' : ' událostí'));
+    };
+    orb.onclick = () => { if (listening) finish(); else startRec(); };
+    if (listen && SR) startRec(); else setTimeout(()=>inp.focus(), 300);
+    function finish(){ listening = false; orb.classList.remove('on'); if (rec){ try { rec.stop(); } catch(_){} } st.textContent = inp.value.trim() ? 'Zkontrolujte a uložte' : 'Klepněte a mluvte'; }
+    function startRec(){
+      listening = true; orb.classList.add('on'); st.textContent = 'Poslouchám… až budete hotovi, klepněte na mikrofon';
+      let base = inp.value.trim();
+      const session = () => {
+        if (!listening) return;
+        try {
+          const r = new SR(); rec = r; r.lang = 'cs-CZ'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+          r.onresult = ev => { let t = ''; for (const x of ev.results) t += x[0].transcript; inp.value = (base ? base + ' ' : '') + t.trim(); upd(); };
+          r.onerror = ev => { if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){ listening = false; orb.classList.remove('on'); st.textContent = 'Mikrofon není povolený — napište to prosím.'; } };
+          r.onend = () => { if (rec === r) rec = null; base = inp.value.trim(); if (listening) setTimeout(session, 120); else { orb.classList.remove('on'); if (!/není/.test(st.textContent)) st.textContent = inp.value.trim() ? 'Zkontrolujte a uložte' : 'Klepněte a mluvte'; } };
+          r.start();
+        } catch(e){ listening = false; orb.classList.remove('on'); st.textContent = 'Hlas teď nejde — napište to prosím.'; }
+      };
+      session();
     }
   });
 }
@@ -1182,7 +1237,7 @@ function openHelp(){
   const sec = (ic, t, body) => `<div class="hlp"><div class="hlp-i">${ic}</div><div><b>${t}</b><p>${body}</p></div></div>`;
   openSheet(`<h3>Jak to funguje</h3>
     ${sec('➕','Přidání události','Oranžové <b>+</b> vpravo dole. U „Kdo“ můžete vybrat víc lidí, nebo nechat „Celá rodina“. Opakování: každý den, týden, 14 dní, měsíc nebo rok. „Opakovat do“ nechte prázdné = napořád.')}
-    ${sec('🎙️','Přidání hlasem','Mikrofon vedle +. Řekněte třeba „Matěj zubař ve čtvrtek v 15:30“ nebo „máma práce zítra od 8 do 16“. Aplikace vyplní formulář, vy jen zkontrolujete a uložíte.')}
+    ${sec('🎙️','Přidání hlasem','Mikrofon vedle +. Řekněte třeba „Matěj zubař ve čtvrtek v 15:30“ nebo „máma práce zítra od 8 do 16“. Mikrofon poslouchá, dokud ho sami nevypnete klepnutím. Můžete nadiktovat i víc událostí najednou, stačí je oddělit slovem „další“. Šotendář je rozdělí, vy jen zkontrolujete a uložíte.')}
     ${sec('🎡','Kolečko dole','Přejeďte palcem doleva = dopředu v čase, doprava = zpět. Švihnutím se roztočí. Klepnutím na číslo skočíte na den. Tlačítko <b>Dnes</b> vás vrátí na dnešek. Potáhnutím kolečka nahoru se ukáže celý měsíc, dolů zase přehled.')}
     ${sec('👤','Filtr podle lidí','Klepněte na jméno nahoře: uvidíte všechny jeho budoucí události, opakované jen jednou. <b>Všichni</b> nebo druhé klepnutí na jméno filtr zruší.')}
     ${sec('🗓️','Přehled a Měsíc','Přehled = seznam dní pod sebou. Měsíc = celý měsíc s tečkami, kdo má kdy program; klepnutím na den uvidíte jeho události.')}
