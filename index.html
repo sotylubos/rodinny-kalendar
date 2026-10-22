@@ -78,7 +78,31 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .hol{margin:-4px 4px 8px;font-size:13px;font-weight:700;color:var(--danger)}
 .ev .title .ic{margin-right:6px}
 .tag.inv{background:#FFF1BF;color:#7A5C00}
+.rsvp-box{margin-top:14px;background:var(--card);border-radius:18px;padding:12px 14px;box-shadow:var(--shadow)}
+.rsvp-h{display:flex;justify-content:space-between;align-items:baseline;font-weight:800;margin-bottom:6px}
+.rsvp-h span{color:#1F8A4C;font-size:14px}
+.rsvp{display:flex;align-items:center;gap:10px;padding:6px 0}
+.rsvp .avatar{width:30px;height:30px;font-size:13px;flex:none}
+.rsvp b{flex:1;font-size:15px}
+.rsvp .st{font-size:13px;font-weight:700;padding:3px 10px;border-radius:20px}
+.rsvp.yes .st{background:#DDF5E6;color:#1F8A4C}
+.rsvp.no .st{background:#FBE3E3;color:#B3261E}
+.rsvp.wait .st{color:var(--muted);font-weight:600}
+.rsvp.host .st{background:#FFF1BF;color:#7A5C00}
+.rsvp.wait{opacity:.75}
+@media (prefers-color-scheme: dark){ .rsvp.yes .st{background:#173A26;color:#7BD69C} .rsvp.no .st{background:#3D1C1C;color:#F2A3A3} .rsvp.host .st{background:#3A3215;color:#F5D46B} .rsvp-h span{color:#7BD69C} }
 @media (prefers-color-scheme: dark){ .tag.inv{background:#3A3215;color:#F5D46B} }
+.fam{background:var(--card);border-radius:18px;padding:0 14px;box-shadow:var(--shadow);margin:6px 0 16px}
+.fam summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 0;cursor:pointer}
+.fam summary::-webkit-details-marker{display:none}
+.fam-av{display:flex;flex:none}
+.fam-av .avatar{width:28px;height:28px;font-size:12px;border:2px solid var(--card);margin-left:-8px}
+.fam-av .avatar:first-child{margin-left:0}
+.fam-t{flex:1;display:flex;flex-direction:column;min-width:0}
+.fam-t small{color:var(--muted);font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fam-chev{font-size:22px;color:var(--muted);transition:transform .2s}
+.fam[open] .fam-chev{transform:rotate(90deg)}
+.fam[open]{padding-bottom:14px}
 .hlp{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 .hlp-i{font-size:22px;width:30px;flex:none;text-align:center}
 .hlp b{font-size:15px}
@@ -150,7 +174,8 @@ main{padding:4px 16px calc(230px + env(safe-area-inset-bottom))}
 .scrim.show{opacity:1}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--bg);border-radius:26px 26px 0 0;max-height:92dvh;overflow:auto;padding:10px 18px calc(22px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .25s cubic-bezier(.2,.8,.2,1);max-width:640px;margin:0 auto}
 .sheet.show{transform:none}
-.grab{width:40px;height:5px;border-radius:5px;background:var(--line);margin:0 auto 12px}
+.grab{width:40px;height:5px;border-radius:5px;background:var(--line);margin:0 auto}
+.grab-zone{margin:-10px -18px 8px;padding:12px 0 10px;cursor:pointer;touch-action:none;position:sticky;top:-10px;z-index:2;background:var(--bg)}
 .sheet h3{font-family:Fraunces,serif;font-weight:650;font-size:24px;margin:4px 0 14px;letter-spacing:-.3px}
 .field{display:block;margin-bottom:14px}
 .field>span{display:block;font-size:13px;font-weight:700;color:var(--muted);margin:0 2px 6px}
@@ -206,10 +231,10 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
 .dock .fab{width:56px;height:56px;border-radius:19px}
 .today-btn{height:44px;padding:0 18px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-weight:800;font-size:15px;color:var(--accent);opacity:0;transform:translateY(10px) scale(.85);transition:opacity .2s,transform .25s cubic-bezier(.2,.9,.3,1.3);pointer-events:none!important}
 .today-btn.show{opacity:1;transform:none;pointer-events:auto!important}
-.dial{pointer-events:auto;position:relative;height:calc(108px + env(safe-area-inset-bottom));overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;background:color-mix(in srgb,var(--card) 84%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:30px 30px 0 0;box-shadow:0 -8px 28px rgba(30,34,48,.10);cursor:grab}
+.dial{pointer-events:auto;position:relative;transition:transform .2s;height:calc(108px + env(safe-area-inset-bottom));overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;background:color-mix(in srgb,var(--card) 84%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:30px 30px 0 0;box-shadow:0 -8px 28px rgba(30,34,48,.10);cursor:grab}
 .dial:active{cursor:grabbing}
 .dial-rail{position:absolute;left:50%;border-radius:50%;border:1.5px dashed var(--line);pointer-events:none}
-.dial-mark{position:absolute;left:50%;top:7px;width:22px;height:4px;margin-left:-11px;border-radius:4px;background:var(--accent)}
+.dial-mark{position:absolute;left:50%;top:7px;width:36px;height:5px;margin-left:-18px;border-radius:4px;background:var(--accent)}
 #dial-ticks{position:absolute;left:50%;width:0;height:0}
 .tick{position:absolute;width:46px;height:60px;margin:-30px 0 0 -23px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-radius:17px;will-change:transform}
 .tick small{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;line-height:1.2}
@@ -487,11 +512,12 @@ function ageOf(e){ const a = e.birth_year ? +evStartKey(e).slice(0,4) - e.birth_
 function iconFor(t){ const n = norm(t); for (const [re,i] of ICON_RE) if (re.test(n)) return i; return ''; }
 
 /* ================= render ================= */
-document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
-  view = b.dataset.view; document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on', x===b));
+function setView(v){
+  if (v === view) return; view = v; document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on', x.dataset.view===v));
   if (view==='month') monthCursor = firstOfMonth(parseKey(selDay));
-  render();
-});
+  render(); window.scrollTo({top:0});
+}
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => setView(b.dataset.view));
 function render(){ renderCore(); dialSync(); }
 function renderCore(){
   if (!me) return;
@@ -531,7 +557,7 @@ function evCard(e, withDate, repKind){ CARDS[e.id] = e;
   const time = e.all_day ? `<div class="time" style="font-size:13px">celý<br>den</div>` : `<div class="time">${hm(s)}${en?`<small>${hm(en)}</small>`:''}</div>`;
   const tag = tagsOf(e);
   const rep = repKind ? `<span class="tag" style="background:var(--line);color:var(--muted)">↻ Opakuje se · ${REPTXT[repKind]||'pravidelně'}</span>` : master(e).rrule ? `<span title="Opakuje se">↻</span>` : '';
-  return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${barOf(e)}"></span>${time}<div class="body">${withDate?`<div class="res-date">${repKind?'Příště: ':''}${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${iconFor(e.title)?`<span class="ic">${iconFor(e.title)}</span>`:''}${esc(e.title)}${ageOf(e)?`<span class="age"> · ${yearsTxt(ageOf(e))}</span>`:''}</div><div class="meta">${tag}${master(e).invite?'<span class="tag inv">🙋 Kdo se přidá?</span>':''}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
+  return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${barOf(e)}"></span>${time}<div class="body">${withDate?`<div class="res-date">${repKind?'Příště: ':''}${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${iconFor(e.title)?`<span class="ic">${iconFor(e.title)}</span>`:''}${esc(e.title)}${ageOf(e)?`<span class="age"> · ${yearsTxt(ageOf(e))}</span>`:''}</div><div class="meta">${tag}${master(e).invite?`<span class="tag inv">🙋 ${(master(e).going||[]).length ? '✓ ' + (master(e).going||[]).map(i => (memberOf(i)||{name:'?'}).name).join(', ') : 'Kdo se přidá?'}</span>`:''}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
 }
 function renderPerson(){
   const m = memberOf(filter); if (!m){ filter = 'all'; renderList(); return; }
@@ -590,7 +616,8 @@ document.addEventListener('click', e => {
 /* ================= sheets ================= */
 function openSheet(html, onOpen){
   const s=$('#sheet'), sc=$('#scrim');
-  s.innerHTML = `<div class="grab"></div>` + html;
+  s.style.transform = ''; s.scrollTop = 0;
+  s.innerHTML = `<div class="grab-zone" aria-label="Zavřít"><div class="grab"></div></div>` + html;
   sc.classList.remove('hidden'); requestAnimationFrame(()=>{ sc.classList.add('show'); s.classList.add('show'); });
   onOpen && onOpen(s);
 }
@@ -599,6 +626,26 @@ function closeSheet(){
   stopVoice(); setTimeout(()=>{ sc.classList.add('hidden'); s.innerHTML=''; }, 250);
 }
 $('#scrim').onclick = closeSheet;
+(function sheetDrag(){
+  const s = $('#sheet'); let y0 = 0, dy = 0, t0 = 0, on = false, grab = false, live = false;
+  s.addEventListener('click', e => { if (e.target.closest('.grab-zone')) closeSheet(); });
+  s.addEventListener('touchstart', e => {
+    if (!s.classList.contains('show') || e.touches.length > 1) return;
+    grab = !!e.target.closest('.grab-zone');
+    if (!grab && (s.scrollTop > 0 || e.target.closest('input,textarea,select,.swatches'))) { on = false; return; }
+    y0 = e.touches[0].clientY; t0 = performance.now(); dy = 0; on = true; live = false;
+  }, { passive: true });
+  s.addEventListener('touchmove', e => {
+    if (!on) return; const d = e.touches[0].clientY - y0;
+    if (!live){ if (Math.abs(d) < 6) return; if (d < 0 || (!grab && s.scrollTop > 0)) { on = false; return; } live = true; }
+    dy = Math.max(0, d); e.preventDefault();
+    s.style.transition = 'none'; s.style.transform = `translateY(${dy}px)`;
+  }, { passive: false });
+  const end = () => { if (!on) return; on = false; if (!live) return; live = false;
+    s.style.transition = ''; const v = dy / Math.max(1, performance.now() - t0);
+    s.style.transform = ''; if (dy > 110 || (dy > 30 && v > .5)) closeSheet(); };
+  s.addEventListener('touchend', end); s.addEventListener('touchcancel', end);
+})();
 
 const IC = {
   cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
@@ -617,15 +664,34 @@ function openDetail(e){
     <div class="detail-row">${IC.user}<span class="meta" style="margin:0;flex-wrap:wrap">${tagsOf(e)}</span></div>
     ${master(e).rrule?`<div class="detail-row">${IC.rep}<span>Opakuje se · ${REPTXT[master(e).rrule]}${master(e).rrule_until?' · do '+fmtDM.format(parseKey(master(e).rrule_until))+' '+master(e).rrule_until.slice(0,4):''}</span></div>`:''}
     ${e.note?`<p class="note">${esc(e.note)}</p>`:''}
-    ${master(e).invite ? (idsOf(e).includes(me.id) ? '<button class="btn ghost wide" id="d-leave" style="width:100%;margin-top:14px">Nakonec nepůjdu</button>' : '<button class="btn wide" id="d-join" style="width:100%;max-width:none;margin-top:14px">🙋 Přidám se</button>') : ''}
+    ${master(e).invite ? rsvpBlock(e) : ''}
     <div class="actions" style="margin-top:18px"><button class="btn ghost" id="d-edit">Upravit</button><button class="btn ghost" id="d-del" style="color:var(--danger)">Smazat</button></div>`,
   s => {
     s.querySelector('#d-edit').onclick = () => openEditor(e);
     s.querySelector('#d-del').onclick = () => confirmDelete(e);
-    const setIds = async (ids, kind) => { const m = master(e); const r = await sb.from('events').update({ member_ids: ids, member_id: ids[0] || null }).eq('id', m.id); if (r.error) return toast('Nepovedlo se'); if (kind) sb.functions.invoke('invite', { body: { event_id: m.id, kind } }).catch(()=>{}); await loadEvents(); closeSheet(); toast(kind ? 'Jdeš taky 👍' : 'Odhlášeno'); };
-    const jb = s.querySelector('#d-join'); if (jb) jb.onclick = () => setIds([...new Set([...idsOf(master(e)), me.id])], 'join');
-    const lb = s.querySelector('#d-leave'); if (lb) lb.onclick = () => setIds(idsOf(master(e)).filter(x => x !== me.id), null);
+    const answer = async (g, b) => { const m = master(e); b.disabled = true;
+      const r = await sb.rpc('respond_invite', { p_event: m.id, p_going: g }); b.disabled = false;
+      if (r.error) return toast('Nepovedlo se, zkuste to znovu');
+      sb.functions.invoke('invite', { body: { event_id: m.id, kind: g ? 'join' : 'decline' } }).catch(()=>{});
+      await loadEvents(); closeSheet(); toast(g ? 'Jdeš taky 👍' : 'Dobře, dám vědět, že nejdeš'); };
+    s.querySelectorAll('[data-rsvp]').forEach(b => b.onclick = () => answer(b.dataset.rsvp === '1', b));
   });
+}
+function rsvpBlock(e){
+  const m = master(e), go = m.going || [], no = m.declined || [], host = m.inviter;
+  const rows = members.map(x => {
+    const [cls, st] = x.id === host ? ['host', 'zve ostatní'] : go.includes(x.id) ? ['yes', '✓ jde'] : no.includes(x.id) ? ['no', '✕ nejde'] : ['wait', 'bez odpovědi'];
+    return `<div class="rsvp ${cls}"><span class="avatar" style="background:${x.color}">${esc(x.name[0])}</span><b>${esc(x.name)}</b><span class="st">${st}</span></div>`;
+  }).join('');
+  let btns = '';
+  if (me.id !== host){
+    const yes = '<button class="btn" data-rsvp="1">🙋 Přidám se</button>', nope = '<button class="btn ghost" data-rsvp="0">Nepůjdu</button>';
+    btns = go.includes(me.id) ? '<button class="btn ghost" data-rsvp="0" style="width:100%">Nakonec nepůjdu</button>'
+      : no.includes(me.id) ? '<button class="btn" data-rsvp="1" style="width:100%;max-width:none">🙋 Nakonec půjdu</button>'
+      : `<div class="actions" style="margin:0">${yes}${nope}</div>`;
+    btns = `<div style="margin-top:12px">${btns}</div>`;
+  }
+  return `<div class="rsvp-box"><div class="rsvp-h">🙋 Kdo se přidá?<span>${go.length ? go.length + ' ' + (go.length === 1 ? 'jde' : 'jdou') : ''}</span></div>${rows}${btns}</div>`;
 }
 function confirmDelete(e){
   const m = master(e), k = evStartKey(e), rec = !!m.rrule;
@@ -646,7 +712,7 @@ function confirmDelete(e){
 function openEditor(e, preset){
   const isNew = !e;
   const d = e ? {
-      title:e.title, member_id:e.member_id, ids:idsOf(e), date:evStartKey(e), endDate:evEndKey(e), all_day:e.all_day, birth_year:e.birth_year, invite:master(e).invite,
+      title:e.title, member_id:e.member_id, ids:idsOf(e), date:evStartKey(e), endDate:evEndKey(e), all_day:e.all_day, birth_year:e.birth_year, invite:master(e).invite, inviter:master(e).inviter,
       start: e.all_day?'09:00':hm(new Date(e.starts_at)), end: (!e.all_day && e.ends_at)?hm(new Date(e.ends_at)):'', note:e.note||''
     } : Object.assign({ title:'', member_id: me.id, date: selDay < todayKey() ? todayKey() : selDay, endDate:null, all_day:false, start:'09:00', end:'10:00', note:'' }, preset||{});
   if (!d.endDate) d.endDate = d.date;
@@ -699,7 +765,7 @@ function openEditor(e, preset){
         let starts, ends;
         if (allDay){ starts = parseKey(dk); const span = Math.max(0, Math.round((parseKey(endDate)-parseKey(date))/864e5)); ends = parseKey(addDays(dk,span)); ends.setHours(23,59); }
         else { starts = new Date(dk+'T'+st); ends = et ? new Date(dk+'T'+et) : null; if (ends && ends<=starts) ends.setDate(ends.getDate()+1); }
-        const by = +s.querySelector('#f-by').value; return { title, invite: inviteOn, birth_year: (isBday(title) && by >= 1900 && by <= 2100) ? by : null, member_id: who[0] || null, member_ids: who, all_day: allDay, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, note };
+        const by = +s.querySelector('#f-by').value; return { title, invite: inviteOn, inviter: inviteOn ? (d.inviter || me.id) : null, birth_year: (isBday(title) && by >= 1900 && by <= 2100) ? by : null, member_id: who[0] || null, member_ids: who, all_day: allDay, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, note };
       };
       const btn = s.querySelector('#f-save'); btn.disabled = true; btn.textContent = 'Ukládám…';
       let error;
@@ -915,18 +981,18 @@ function ndSearch(q){
 $('#btn-settings').onclick = openSettings;
 function openSettings(){
   openSheet(`
-    <div class="actions" style="margin:0 0 14px"><button class="btn ghost" id="s-help">❓ Jak to funguje</button><button class="btn ghost" id="s-idea">💡 Mám nápad</button></div>
-    <h3>Rodina</h3>
-    <p class="hint" style="margin-top:-6px">Každý se přihlašuje svým Google e-mailem. Kdo tu nemá e-mail, nemůže se přihlásit.</p>
+    <div class="actions" style="margin:0 0 12px"><button class="btn ghost" id="s-help">❓ Nápověda</button><button class="btn ghost" id="s-idea">💡 Mám nápad</button></div>
+    <div class="toggle"><span>Upozornění v 7:00 a 19:00<br><small style="color:var(--muted);font-weight:500">Ráno co je dnes, večer co je zítra</small></span><button class="sw" id="s-push" aria-label="Upozornění"></button></div>
+    <p class="hint" id="s-push-hint"></p>
+    <details class="fam"><summary><span class="fam-av">${members.map(m=>`<span class="avatar" style="background:${m.color}">${esc(m.name[0])}</span>`).join('')}</span><span class="fam-t"><b>Rodina</b><small>${members.map(m=>esc(m.name)).join(', ')}</small></span><span class="fam-chev">›</span></summary>
+    <p class="hint">Jména, barvy a e-maily. Každý se přihlašuje svým Google e-mailem.</p>
     <div id="s-list">${members.map(m=>`
       <div class="mem" data-id="${m.id}">
         <div class="r"><span class="avatar" style="background:${m.color};width:36px;height:36px;font-size:14px">${esc(m.name[0])}</span><input class="inp s-name" value="${esc(m.name)}" placeholder="Jméno" maxlength="30"></div>
         <input class="inp s-mail" type="email" value="${esc(m.email||'')}" placeholder="e-mail@gmail.com" style="margin-bottom:10px" ${m.id===me.id?'readonly title="Vlastní e-mail nelze změnit"':''}>
         <div class="swatches">${COLORS.map(c=>`<button data-c="${c}" class="${c===m.color?'on':''}" style="background:${c}" aria-label="barva"></button>`).join('')}</div>
       </div>`).join('')}</div>
-    <div class="toggle" style="margin-top:6px"><span>Upozornění v 7:00 a 19:00<br><small style="color:var(--muted);font-weight:500">Ráno co je dnes, večer co je zítra</small></span><button class="sw" id="s-push" aria-label="Upozornění"></button></div>
-    <p class="hint" id="s-push-hint"></p>
-    <div class="actions"><button class="btn" id="s-save">Uložit</button></div>
+    <div class="actions"><button class="btn" id="s-save">Uložit změny</button></div></details>
     <div style="text-align:center;margin-top:14px;color:var(--muted);font-size:13px">Přihlášen: ${esc(user.email)}</div>
     <div style="text-align:center"><button class="btn danger" id="s-logout">Odhlásit se</button></div>`,
   s => {
@@ -1024,15 +1090,19 @@ function dialInit(){
   const rr = dial.R + 34; Object.assign(rail.style, { width: 2*rr+'px', height: 2*rr+'px', marginLeft: -rr+'px', top: (top - rr)+'px' });
   const pxPerDay = dial.R * dial.STEP * Math.PI / 180;
   el.addEventListener('pointerdown', ev => {
-    cancelAnimationFrame(dial.anim); el.setPointerCapture(ev.pointerId);
-    dial.drag = { x: ev.clientX, p: dial.pos, moved: 0, hist: [[performance.now(), ev.clientX]] };
+    cancelAnimationFrame(dial.anim); try { el.setPointerCapture(ev.pointerId); } catch(_){}
+    dial.drag = { x: ev.clientX, y: ev.clientY, p: dial.pos, moved: 0, mode: '', hist: [[performance.now(), ev.clientX]] };
   });
   el.addEventListener('pointermove', ev => { const g = dial.drag; if (!g) return;
-    const dx = ev.clientX - g.x; g.moved = Math.max(g.moved, Math.abs(dx));
+    const dx = ev.clientX - g.x, dy = ev.clientY - g.y;
+    if (!g.mode){ if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.3) g.mode = 'v'; else if (Math.abs(dx) > 8) g.mode = 'h'; }
+    if (g.mode === 'v'){ g.dy = dy; el.style.transform = `translateY(${Math.max(-40, Math.min(30, dy * .35))}px)`; return; }
+    g.moved = Math.max(g.moved, Math.abs(dx));
     g.hist.push([performance.now(), ev.clientX]); if (g.hist.length > 6) g.hist.shift();
     dialSet(g.p - dx / pxPerDay, true);
   });
   const end = ev => { const g = dial.drag; if (!g) return; dial.drag = null;
+    if (g.mode === 'v'){ el.style.transform = ''; if (g.dy < -40) setView('month'); else if (g.dy > 40) setView('list'); return; }
     if (g.moved < 6){ const t = document.elementFromPoint(ev.clientX, ev.clientY); const tk = t && t.closest('.tick');
       if (tk) dialAnimate(+tk.dataset.i, true, 260); else dialAnimate(Math.round(dial.pos), true, 200); return; }
     const a = g.hist[0], b = g.hist[g.hist.length-1], dt = Math.max(1, b[0]-a[0]);
@@ -1059,10 +1129,11 @@ function openHelp(){
   openSheet(`<h3>Jak to funguje</h3>
     ${sec('➕','Přidání události','Oranžové <b>+</b> vpravo dole. U „Kdo“ můžete vybrat víc lidí, nebo nechat „Celá rodina“. Opakování: každý den, týden, 14 dní, měsíc nebo rok. „Opakovat do“ nechte prázdné = napořád.')}
     ${sec('🎙️','Přidání hlasem','Mikrofon vedle +. Řekněte třeba „Matěj zubař ve čtvrtek v 15:30“ nebo „máma práce zítra od 8 do 16“. Aplikace vyplní formulář, vy jen zkontrolujete a uložíte.')}
-    ${sec('🎡','Kolečko dole','Přejeďte palcem doleva = dopředu v čase, doprava = zpět. Švihnutím se roztočí. Klepnutím na číslo skočíte na den. Tlačítko <b>Dnes</b> vás vrátí na dnešek.')}
+    ${sec('🎡','Kolečko dole','Přejeďte palcem doleva = dopředu v čase, doprava = zpět. Švihnutím se roztočí. Klepnutím na číslo skočíte na den. Tlačítko <b>Dnes</b> vás vrátí na dnešek. Potáhnutím kolečka nahoru se ukáže celý měsíc, dolů zase přehled.')}
     ${sec('👤','Filtr podle lidí','Klepněte na jméno nahoře: uvidíte všechny jeho budoucí události, opakované jen jednou. <b>Všichni</b> nebo druhé klepnutí na jméno filtr zruší.')}
     ${sec('🗓️','Přehled a Měsíc','Přehled = seznam dní pod sebou. Měsíc = celý měsíc s tečkami, kdo má kdy program; klepnutím na den uvidíte jeho události.')}
     ${sec('✏️','Úprava a mazání','Klepněte na událost → Upravit / Smazat. U opakované zvolíte „Jen tuto“, nebo „Tuto i všechny další“.')}
+    ${sec('🙋','Kdo se přidá?','Zapněte u události přepínač „Kdo se přidá?“ a ostatním přijde pozvánka. V události pak uvidíte, kdo jde ✓, kdo nejde ✕ a kdo ještě neodpověděl.')}
     ${sec('🔍','Hledání','Lupa nahoře. Najde události, jména lidí, jmeniny (např. „Lukáš“) i změny času („čas“).')}
     ${sec('🎂','Narozeniny','Když název obsahuje „narozeniny“, objeví se pole pro rok narození a kalendář pak ukazuje věk.')}
     ${sec('🌸','Jmeniny, svátky, změna času','U každého dne vpravo drobně jmeniny. Státní svátky červeně, změna času tyrkysově.')}
