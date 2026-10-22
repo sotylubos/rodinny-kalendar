@@ -1,6 +1,6 @@
 {
-  "name": "Rodinný kalendář",
-  "short_name": "Kalendář",
+  "name": "Šotendář",
+  "short_name": "Šotendář",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
