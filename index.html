@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Rodinný kalendář</title>
+<title>Šotendář</title>
 <meta name="theme-color" content="#F6F3EE" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#15171C" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Kalendář">
+<meta name="apple-mobile-web-app-title" content="Šotendář">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" id="touch-icon" href="icon.svg">
@@ -77,6 +77,21 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .day-h .nd::before{content:'svátek · ';opacity:.7}
 .hol{margin:-4px 4px 8px;font-size:13px;font-weight:700;color:var(--danger)}
 .ev .title .ic{margin-right:6px}
+.tag.inv{background:#FFF1BF;color:#7A5C00}
+@media (prefers-color-scheme: dark){ .tag.inv{background:#3A3215;color:#F5D46B} }
+.hlp{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.hlp-i{font-size:22px;width:30px;flex:none;text-align:center}
+.hlp b{font-size:15px}
+.hlp p{margin:3px 0 0;color:var(--muted);font-size:14px;line-height:1.45}
+.idea{background:var(--card);border-radius:14px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--shadow);line-height:1.4}
+.idea .itx{white-space:pre-wrap}
+.idea small{display:block;color:var(--muted);font-weight:700;font-size:12px;margin-bottom:3px}
+.cms{margin-top:8px;border-top:1px solid var(--line);padding-top:6px}
+.cm{font-size:14px;padding:4px 0;white-space:pre-wrap}
+.cm small{display:inline;margin-left:6px;font-size:11px}
+.cm-new{display:flex;gap:6px;margin-top:8px}
+.cm-new .inp{height:40px;font-size:15px}
+.cm-send{width:40px;height:40px;flex:none;border-radius:12px;background:var(--accent);color:#fff;font-size:16px}
 .dst{margin:-4px 4px 8px;font-size:13px;font-weight:700;color:#0E8A96}
 .age{color:var(--muted);font-weight:700}
 .ndhit{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow);margin-bottom:8px;width:100%;text-align:left}
@@ -218,8 +233,8 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
 <!-- Login -->
 <div id="scr-login" class="center hidden">
   <img class="logo" src="icon.svg" alt="">
-  <h1>Rodinný kalendář</h1>
-  <p>Zubař, práce, kroužky i dovolená — všechno na jednom místě pro celou rodinu.</p>
+  <h1>Šotendář</h1>
+  <p>Rodinný kalendář Šotků. Zubař, práce, kroužky i dovolená — všechno na jednom místě.</p>
   <button class="btn wide" id="btn-google" style="margin-top:10px">
     <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.2-.1-2.3-.4-3.5z"/></svg>
     Přihlásit se přes Google
@@ -464,7 +479,7 @@ function holiday(k){ const f = HOL[k.slice(5,7)+k.slice(8,10)]; if (f) return f;
 function lastSunday(y, m){ const d = new Date(y, m + 1, 0); d.setDate(d.getDate() - d.getDay()); return keyOf(d); }
 function dstChange(k){ const y = +k.slice(0,4); return k === lastSunday(y, 2) ? '🕐 Změna na letní čas · ve 2:00 se posouvá na 3:00 (spíme o hodinu méně)' : k === lastSunday(y, 9) ? '🕐 Změna na zimní čas · ve 3:00 se posouvá na 2:00 (spíme o hodinu déle)' : ''; }
 function dayExtra(k){ const n = nameDay(k), hl = holiday(k), dc = dstChange(k); return (n ? `<span class="nd">${esc(n)}</span>` : '') + '</div>' + (hl ? `<div class="hol">${esc(hl)} · státní svátek</div>` : '') + (dc ? `<div class="dst">${dc}</div>` : ''); }
-const ICONS = [['zub','🦷'],['doktor|lekar|ordinac|nemocnic|ockovan|prohlidk|vysetren','🩺'],['narozenin','🎂'],['svatek|jmenin','🌸'],['vyroci|svatb','💍'],['oslav|party|vecirek','🎉'],['box','🥊'],['fotbal','⚽'],['hokej','🏒'],['tenis','🎾'],['plavan|bazen','🏊'],['kolo|cyklo','🚴'],['trenink|posilovn|fitness|beh|sport|zapas','🏋️'],['motork|moto','🏍️'],['skol|tridni|rodicovsk|pisemk|test|zkousk|maturit','🏫'],['prace|smena|sluzb|porad|meeting|schuzk','💼'],['dovolen|vylet|chalup|chat','🏖️'],['letadl|letiste|odlet|prilet','✈️'],['vlak|nadrazi','🚆'],['kadern|holic|strih','💇'],['kosmetik|manikur|pedikur','💅'],['auto|servis|stk|pneu|myt','🚗'],['nakup|obchod','🛒'],['vecere|obed|snidan|restaurac|kavarn|pizza','🍽️'],['kino|film','🎬'],['divadl|koncert|muzikal|opera','🎭'],['urad|banka|posta|notar','🏛️'],['plat|zaplatit|faktur|najem|splatk','💳'],['veterin|pes|psa|kocka','🐾'],['uklid|prani|zehleni','🧹'],['zahrad|seka','🌱'],['babick|dedeck|navstev','👵']];
+const ICONS = [['zub','🦷'],['doktor|lekar|ordinac|nemocnic|ockovan|prohlidk|vysetren','🩺'],['narozenin','🎂'],['svatek|jmenin','🌸'],['vyroci|svatb','💍'],['oslav|party|vecirek','🎉'],['box','🥊'],['fotbal','⚽'],['hokej','🏒'],['tenis','🎾'],['plavan|bazen','🏊'],['kolo|cyklo','🚴'],['trenink|posilovn|fitness|beh|sport|zapas','🏋️'],['motork|moto','🏍️'],['skol|tridni|rodicovsk|pisemk|test|zkousk|maturit','🏫'],['prace|smena|sluzb|porad|meeting|schuzk','💼'],['dovolen|vylet|chalup|chat','🏖️'],['letadl|letiste|odlet|prilet','✈️'],['vlak|nadrazi','🚆'],['kadern|holic|strih','💇'],['kosmetik|manikur|pedikur','💅'],['auto|servis|stk|pneu|myt','🚗'],['nakup|obchod','🛒'],['vecere|obed|snidan|restaurac|kavarn|pizza','🍽️'],['kino|kina|film','🎬'],['divadl|koncert|muzikal|opera','🎭'],['urad|banka|posta|notar','🏛️'],['plat|zaplatit|faktur|najem|splatk','💳'],['veterin|pes|psa|kocka','🐾'],['uklid|prani|zehleni','🧹'],['zahrad|seka','🌱'],['babick|dedeck|navstev','👵']];
 const ICON_RE = ICONS.map(([p,i]) => [new RegExp(p), i]);
 function isBday(t){ return /narozenin/.test(norm(t)); }
 function yearsTxt(n){ return n===1 ? '1 rok' : (n>=2 && n<=4) ? n+' roky' : n+' let'; }
@@ -516,7 +531,7 @@ function evCard(e, withDate, repKind){ CARDS[e.id] = e;
   const time = e.all_day ? `<div class="time" style="font-size:13px">celý<br>den</div>` : `<div class="time">${hm(s)}${en?`<small>${hm(en)}</small>`:''}</div>`;
   const tag = tagsOf(e);
   const rep = repKind ? `<span class="tag" style="background:var(--line);color:var(--muted)">↻ Opakuje se · ${REPTXT[repKind]||'pravidelně'}</span>` : master(e).rrule ? `<span title="Opakuje se">↻</span>` : '';
-  return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${barOf(e)}"></span>${time}<div class="body">${withDate?`<div class="res-date">${repKind?'Příště: ':''}${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${iconFor(e.title)?`<span class="ic">${iconFor(e.title)}</span>`:''}${esc(e.title)}${ageOf(e)?`<span class="age"> · ${yearsTxt(ageOf(e))}</span>`:''}</div><div class="meta">${tag}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
+  return `<button class="ev" data-id="${e.id}"><span class="bar" style="background:${barOf(e)}"></span>${time}<div class="body">${withDate?`<div class="res-date">${repKind?'Příště: ':''}${esc(dayLabel(evStartKey(e)).join(' · '))}</div>`:''}<div class="title">${iconFor(e.title)?`<span class="ic">${iconFor(e.title)}</span>`:''}${esc(e.title)}${ageOf(e)?`<span class="age"> · ${yearsTxt(ageOf(e))}</span>`:''}</div><div class="meta">${tag}${master(e).invite?'<span class="tag inv">🙋 Kdo se přidá?</span>':''}${rep}${e.note?'<span>📝</span>':''}</div></div></button>`;
 }
 function renderPerson(){
   const m = memberOf(filter); if (!m){ filter = 'all'; renderList(); return; }
@@ -602,10 +617,14 @@ function openDetail(e){
     <div class="detail-row">${IC.user}<span class="meta" style="margin:0;flex-wrap:wrap">${tagsOf(e)}</span></div>
     ${master(e).rrule?`<div class="detail-row">${IC.rep}<span>Opakuje se · ${REPTXT[master(e).rrule]}${master(e).rrule_until?' · do '+fmtDM.format(parseKey(master(e).rrule_until))+' '+master(e).rrule_until.slice(0,4):''}</span></div>`:''}
     ${e.note?`<p class="note">${esc(e.note)}</p>`:''}
+    ${master(e).invite ? (idsOf(e).includes(me.id) ? '<button class="btn ghost wide" id="d-leave" style="width:100%;margin-top:14px">Nakonec nepůjdu</button>' : '<button class="btn wide" id="d-join" style="width:100%;max-width:none;margin-top:14px">🙋 Přidám se</button>') : ''}
     <div class="actions" style="margin-top:18px"><button class="btn ghost" id="d-edit">Upravit</button><button class="btn ghost" id="d-del" style="color:var(--danger)">Smazat</button></div>`,
   s => {
     s.querySelector('#d-edit').onclick = () => openEditor(e);
     s.querySelector('#d-del').onclick = () => confirmDelete(e);
+    const setIds = async (ids, kind) => { const m = master(e); const r = await sb.from('events').update({ member_ids: ids, member_id: ids[0] || null }).eq('id', m.id); if (r.error) return toast('Nepovedlo se'); if (kind) sb.functions.invoke('invite', { body: { event_id: m.id, kind } }).catch(()=>{}); await loadEvents(); closeSheet(); toast(kind ? 'Jdeš taky 👍' : 'Odhlášeno'); };
+    const jb = s.querySelector('#d-join'); if (jb) jb.onclick = () => setIds([...new Set([...idsOf(master(e)), me.id])], 'join');
+    const lb = s.querySelector('#d-leave'); if (lb) lb.onclick = () => setIds(idsOf(master(e)).filter(x => x !== me.id), null);
   });
 }
 function confirmDelete(e){
@@ -627,7 +646,7 @@ function confirmDelete(e){
 function openEditor(e, preset){
   const isNew = !e;
   const d = e ? {
-      title:e.title, member_id:e.member_id, ids:idsOf(e), date:evStartKey(e), endDate:evEndKey(e), all_day:e.all_day, birth_year:e.birth_year,
+      title:e.title, member_id:e.member_id, ids:idsOf(e), date:evStartKey(e), endDate:evEndKey(e), all_day:e.all_day, birth_year:e.birth_year, invite:master(e).invite,
       start: e.all_day?'09:00':hm(new Date(e.starts_at)), end: (!e.all_day && e.ends_at)?hm(new Date(e.ends_at)):'', note:e.note||''
     } : Object.assign({ title:'', member_id: me.id, date: selDay < todayKey() ? todayKey() : selDay, endDate:null, all_day:false, start:'09:00', end:'10:00', note:'' }, preset||{});
   if (!d.endDate) d.endDate = d.date;
@@ -642,6 +661,7 @@ function openEditor(e, preset){
       ${members.map(m=>`<button data-id="${m.id}" data-c="${m.color}"><span class="dot" style="background:${m.color}"></span>${esc(m.name)}</button>`).join('')}
       <button data-id="" data-c="var(--fam)"><span class="dot" style="background:var(--fam)"></span>Celá rodina</button></div></div>
     <div class="toggle"><span>Celý den</span><button class="sw" id="f-allday" aria-label="Celý den"></button></div>
+    <div class="toggle"><span>🙋 Kdo se přidá? <small style="font-weight:500;color:var(--muted)">pozve ostatní</small></span><button class="sw" id="f-invite" aria-label="Pozvat ostatní"></button></div>
     <div class="row2"><label class="field"><span id="l-date">Datum</span><input class="inp" type="date" id="f-date" value="${d.date}"></label>
       <label class="field" id="w-enddate"><span>Do</span><input class="inp" type="date" id="f-enddate" value="${d.endDate}"></label></div>
     <div class="row2" id="w-times"><label class="field"><span>Od</span><input class="inp" type="time" id="f-start" value="${d.start}"></label>
@@ -654,12 +674,13 @@ function openEditor(e, preset){
     <label class="field"><span>Poznámka</span><textarea class="inp" id="f-note" placeholder="Adresa, co vzít s sebou…">${esc(d.note)}</textarea></label>
     <div class="actions"><button class="btn ghost" id="f-cancel">Zrušit</button><button class="btn" id="f-save">Uložit</button></div>`,
   s => {
-    let who = d.ids ? [...d.ids] : (d.member_id ? [d.member_id] : []), allDay = d.all_day;
+    let who = d.ids ? [...d.ids] : (d.member_id ? [d.member_id] : []), allDay = d.all_day, inviteOn = !!d.invite;
     const setWho = () => s.querySelectorAll('#f-who button').forEach(b => { const on = b.dataset.id ? who.includes(b.dataset.id) : !who.length; b.classList.toggle('on',on); b.style.background = on ? b.dataset.c : ''; });
     const setAll = () => { s.querySelector('#f-allday').classList.toggle('on',allDay); s.querySelector('#w-times').classList.toggle('hidden',allDay); s.querySelector('#w-enddate').classList.toggle('hidden',!allDay); s.querySelector('#l-date').textContent = allDay?'Od':'Datum'; };
     setWho(); setAll();
     s.querySelector('#f-who').onclick = ev => { const b=ev.target.closest('button'); if(!b) return; const id=b.dataset.id; if (!id) who = []; else who = who.includes(id) ? who.filter(x=>x!==id) : [...who, id]; setWho(); };
     s.querySelector('#f-allday').onclick = () => { allDay=!allDay; setAll(); };
+    const invSw = s.querySelector('#f-invite'); invSw.classList.toggle('on', inviteOn); invSw.onclick = () => { inviteOn = !inviteOn; invSw.classList.toggle('on', inviteOn); if (inviteOn && !who.length) { who = [me.id]; setWho(); } };
     s.querySelector('#f-title').addEventListener('input', ev => s.querySelector('#w-by').classList.toggle('hidden', !isBday(ev.target.value)));
     s.querySelector('#f-date').onchange = ev => { const ed=s.querySelector('#f-enddate'); if (ed.value < ev.target.value) ed.value = ev.target.value; };
     s.querySelector('#f-start').onchange = ev => { const en=s.querySelector('#f-end'); if(!en.value || en.value<=ev.target.value){ const [h,mi]=ev.target.value.split(':').map(Number); en.value=pad((h+1)%24)+':'+pad(mi); } };
@@ -678,19 +699,21 @@ function openEditor(e, preset){
         let starts, ends;
         if (allDay){ starts = parseKey(dk); const span = Math.max(0, Math.round((parseKey(endDate)-parseKey(date))/864e5)); ends = parseKey(addDays(dk,span)); ends.setHours(23,59); }
         else { starts = new Date(dk+'T'+st); ends = et ? new Date(dk+'T'+et) : null; if (ends && ends<=starts) ends.setDate(ends.getDate()+1); }
-        const by = +s.querySelector('#f-by').value; return { title, birth_year: (isBday(title) && by >= 1900 && by <= 2100) ? by : null, member_id: who[0] || null, member_ids: who, all_day: allDay, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, note };
+        const by = +s.querySelector('#f-by').value; return { title, invite: inviteOn, birth_year: (isBday(title) && by >= 1900 && by <= 2100) ? by : null, member_id: who[0] || null, member_ids: who, all_day: allDay, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, note };
       };
       const btn = s.querySelector('#f-save'); btn.disabled = true; btn.textContent = 'Ukládám…';
       let error;
       const until = s.querySelector('#f-until').value || null;
       const row = Object.assign(mk(date), rep==='none' ? { rrule:null, rrule_until:null } : { rrule:rep, rrule_until:until });
       const q = [];
-      if (isNew) q.push(() => sb.from('events').insert(row));
+      if (isNew) q.push(() => sb.from('events').insert(row).select());
       else if (!m0.rrule) q.push(() => sb.from('events').update(row).eq('id', m0.id));
       else if (scope==='one'){ q.push(() => sb.from('events').update({ exdates: [...(m0.exdates||[]), evStartKey(e)] }).eq('id', m0.id)); q.push(() => sb.from('events').insert(Object.assign(mk(date), { rrule:null, rrule_until:null }))); }
       else if (evStartKey(e) <= evStartKey(m0)) q.push(() => sb.from('events').update(row).eq('id', m0.id));
       else { q.push(() => sb.from('events').update({ rrule_until: addDays(evStartKey(e), -1) }).eq('id', m0.id)); q.push(() => sb.from('events').insert(row)); }
-      for (const run of q){ const r = await run(); if (r.error){ error = r.error; break; } }
+      let newId = null;
+      for (const run of q){ const r = await run(); if (r.error){ error = r.error; break; } if (r.data && r.data[0]) newId = r.data[0].id; }
+      if (!error && inviteOn && (isNew ? newId : !m0.invite)) sb.functions.invoke('invite', { body: { event_id: isNew ? newId : m0.id, kind: 'new' } }).catch(()=>{});
       if (error){ btn.disabled=false; btn.textContent='Uložit'; toast('Uložení se nepovedlo'); return; }
       selDay = date; if (view==='month') monthCursor = firstOfMonth(parseKey(date));
       await loadEvents();
@@ -772,6 +795,7 @@ function parseCz(text){
   // people say "v 3" meaning 15:00
   if (start && !m && start[0]>=1 && start[0]<=5 && (!end || end[0]<=7) && !/\d[:.]\d/.test(src)) { start[0]+=12; if (end) end[0]+=12; }
 
+  let inv = false; m = /(kdo se prida|kdo pujde|kdo jde)[ ?]*/.exec(n); if (m){ inv = true; take(m); }
   // member
   m = /\b(cela rodina|celou rodinu|vsichni|vsechny|rodina|spolecne)\b/.exec(n);
   if (m){ member = null; take(m); }
@@ -805,6 +829,7 @@ function parseCz(text){
   if (date) out.date = keyOf(date);
   if (member !== undefined) out.member_id = member;
   if (allDay) out.all_day = true;
+  if (inv) out.invite = true;
   if (start){ out.start = pad(start[0])+':'+pad(start[1]);
     out.end = end ? pad(end[0])+':'+pad(end[1]) : pad((start[0]+1)%24)+':'+pad(start[1]); }
   return out;
@@ -890,6 +915,7 @@ function ndSearch(q){
 $('#btn-settings').onclick = openSettings;
 function openSettings(){
   openSheet(`
+    <div class="actions" style="margin:0 0 14px"><button class="btn ghost" id="s-help">❓ Jak to funguje</button><button class="btn ghost" id="s-idea">💡 Mám nápad</button></div>
     <h3>Rodina</h3>
     <p class="hint" style="margin-top:-6px">Každý se přihlašuje svým Google e-mailem. Kdo tu nemá e-mail, nemůže se přihlásit.</p>
     <div id="s-list">${members.map(m=>`
@@ -907,6 +933,8 @@ function openSettings(){
     s.querySelectorAll('.swatches').forEach(w => w.onclick = e => { const b=e.target.closest('button'); if(!b) return; w.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); w.closest('.mem').querySelector('.avatar').style.background=b.dataset.c; });
     s.querySelector('#s-logout').onclick = logout;
     initPushToggle(s);
+    s.querySelector('#s-help').onclick = openHelp;
+    s.querySelector('#s-idea').onclick = openIdeas;
     s.querySelector('#s-save').onclick = async () => {
       const rows = [...s.querySelectorAll('.mem')].map(el => ({ id: el.dataset.id, name: el.querySelector('.s-name').value.trim() || 'Člen', email: el.querySelector('.s-mail').value.trim().toLowerCase() || null, color: el.querySelector('.swatches .on')?.dataset.c }));
       const mails = rows.map(r=>r.email).filter(Boolean); if (new Set(mails).size !== mails.length) return toast('Stejný e-mail je tam dvakrát');
@@ -1023,6 +1051,63 @@ function dialInit(){
     const i = dIdx(sec.id.slice(2)); if (i !== Math.round(dial.pos)){ dial.last = i; dialAnimate(i, false, 220); }
   }); }, { passive: true });
   dial.last = dIdx(selDay); dial.pos = dial.last; dialDraw();
+}
+
+/* ================= nápověda a nápady ================= */
+function openHelp(){
+  const sec = (ic, t, body) => `<div class="hlp"><div class="hlp-i">${ic}</div><div><b>${t}</b><p>${body}</p></div></div>`;
+  openSheet(`<h3>Jak to funguje</h3>
+    ${sec('➕','Přidání události','Oranžové <b>+</b> vpravo dole. U „Kdo“ můžete vybrat víc lidí, nebo nechat „Celá rodina“. Opakování: každý den, týden, 14 dní, měsíc nebo rok. „Opakovat do“ nechte prázdné = napořád.')}
+    ${sec('🎙️','Přidání hlasem','Mikrofon vedle +. Řekněte třeba „Matěj zubař ve čtvrtek v 15:30“ nebo „máma práce zítra od 8 do 16“. Aplikace vyplní formulář, vy jen zkontrolujete a uložíte.')}
+    ${sec('🎡','Kolečko dole','Přejeďte palcem doleva = dopředu v čase, doprava = zpět. Švihnutím se roztočí. Klepnutím na číslo skočíte na den. Tlačítko <b>Dnes</b> vás vrátí na dnešek.')}
+    ${sec('👤','Filtr podle lidí','Klepněte na jméno nahoře: uvidíte všechny jeho budoucí události, opakované jen jednou. <b>Všichni</b> nebo druhé klepnutí na jméno filtr zruší.')}
+    ${sec('🗓️','Přehled a Měsíc','Přehled = seznam dní pod sebou. Měsíc = celý měsíc s tečkami, kdo má kdy program; klepnutím na den uvidíte jeho události.')}
+    ${sec('✏️','Úprava a mazání','Klepněte na událost → Upravit / Smazat. U opakované zvolíte „Jen tuto“, nebo „Tuto i všechny další“.')}
+    ${sec('🔍','Hledání','Lupa nahoře. Najde události, jména lidí, jmeniny (např. „Lukáš“) i změny času („čas“).')}
+    ${sec('🎂','Narozeniny','Když název obsahuje „narozeniny“, objeví se pole pro rok narození a kalendář pak ukazuje věk.')}
+    ${sec('🌸','Jmeniny, svátky, změna času','U každého dne vpravo drobně jmeniny. Státní svátky červeně, změna času tyrkysově.')}
+    ${sec('🔔','Upozornění','V nastavení zapnete přehled v 7:00 (co je dnes) a v 19:00 (co je zítra). Na iPhonu jen v aplikaci přidané na plochu.')}
+    <div class="actions" style="margin-top:14px"><button class="btn ghost" id="h-back">Zpět</button><button class="btn" id="h-idea">💡 Mám nápad</button></div>`, s => {
+    s.querySelector('#h-back').onclick = openSettings;
+    s.querySelector('#h-idea').onclick = openIdeas;
+  });
+}
+async function openIdeas(){
+  openSheet(`<h3>Nápady na vylepšení</h3>
+    <p class="hint" style="margin-top:-6px">Co vám chybí, co vadí, co by šlo líp? Napište to sem – Táta to uvidí.</p>
+    <label class="field"><textarea class="inp" id="i-text" placeholder="Např. chtěl bych barvu podle typu události…" maxlength="2000" style="height:110px"></textarea></label>
+    <div class="actions"><button class="btn ghost" id="i-back">Zpět</button><button class="btn" id="i-send">Odeslat</button></div>
+    <div id="i-list" style="margin-top:18px"></div>`, async s => {
+    s.querySelector('#i-back').onclick = openSettings;
+    const list = async () => {
+      const { data } = await sb.from('feedback').select('*').order('created_at', { ascending: false }).limit(50);
+      const box = s.querySelector('#i-list'); if (!box) return;
+      if (!data || !data.length){ box.innerHTML = ''; return; }
+      const { data: cms } = await sb.from('feedback_comments').select('*').in('feedback_id', data.map(f => f.id)).order('created_at');
+      const who = id => { const m = memberOf(id); return m ? `<b style="color:${m.color}">${esc(m.name)}</b>` : '<b>?</b>'; };
+      box.innerHTML = `<div class="day-h"><h2 style="font-size:18px">Zatím napsané</h2><span>${data.length}</span></div>` + data.map(f => {
+        const cs = (cms || []).filter(c => c.feedback_id === f.id);
+        return `<div class="idea" data-id="${f.id}"><small>${who(f.member_id)} · ${esc(fmtDM.format(new Date(f.created_at)))}</small><span class="itx">${esc(f.text)}</span>${cs.length ? `<div class="cms">${cs.map(c => `<div class="cm">${who(c.member_id)} ${esc(c.text)}<small>${esc(fmtDM.format(new Date(c.created_at)))}</small></div>`).join('')}</div>` : ''}<div class="cm-new"><input class="inp cm-inp" placeholder="💬 Napsat komentář…" maxlength="2000"><button class="cm-send" aria-label="Odeslat komentář">➤</button></div></div>`;
+      }).join('');
+      box.querySelectorAll('.cm-send').forEach(b => b.onclick = async () => {
+        const card = b.closest('.idea'), inp = card.querySelector('.cm-inp'), t = inp.value.trim(); if (!t) return;
+        b.disabled = true;
+        const { data: c, error } = await sb.from('feedback_comments').insert({ feedback_id: card.dataset.id, member_id: me.id, text: t }).select();
+        b.disabled = false; if (error) return toast('Komentář se nepovedlo uložit');
+        if (c && c[0]) sb.functions.invoke('invite', { body: { kind: 'comment', comment_id: c[0].id } }).catch(()=>{});
+        list();
+      });
+      box.querySelectorAll('.cm-inp').forEach(i => i.onkeydown = e => { if (e.key === 'Enter') i.closest('.idea').querySelector('.cm-send').click(); });
+    };
+    s.querySelector('#i-send').onclick = async () => {
+      const t = s.querySelector('#i-text').value.trim(); if (!t) return toast('Napište nápad');
+      const { data: f, error } = await sb.from('feedback').insert({ text: t, member_id: me.id }).select();
+      if (error) return toast('Odeslání se nepovedlo');
+      if (f && f[0]) sb.functions.invoke('invite', { body: { kind: 'idea', idea_id: f[0].id } }).catch(()=>{});
+      s.querySelector('#i-text').value = ''; toast('Díky! Nápad je uložený a ostatní dostanou upozornění'); list();
+    };
+    list();
+  });
 }
 
 /* ================= start ================= */
