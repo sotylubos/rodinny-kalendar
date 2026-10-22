@@ -229,6 +229,10 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
 .qm-h{font-weight:800;font-size:14px;color:var(--muted);margin:2px 2px 8px}
 .preview.qm{display:flex;gap:12px;align-items:flex-start;margin:0 0 8px;cursor:pointer}
 .preview.qm input{width:22px;height:22px;margin:2px 0 0;accent-color:var(--accent);flex:none}
+.preview.qm .qm-b{flex:1;min-width:0;cursor:pointer}
+.preview.qm.off .qm-b{opacity:.45}
+.qm-ed{flex:none;width:40px;height:40px;margin:-6px -6px 0 0;border-radius:12px;background:var(--bg);font-size:17px}
+.qm-ok{font-size:12px;font-weight:800;color:#1F8A4C;margin-top:3px}
 .preview .pm{color:var(--muted);font-weight:600;font-size:14px;margin-top:4px}
 .hint{font-size:13px;color:var(--muted);line-height:1.5;margin:-4px 2px 14px}
 
@@ -762,7 +766,7 @@ function confirmDelete(e){
 
 
 /* ---------- editor ---------- */
-function openEditor(e, preset){
+function openEditor(e, preset, draft){
   const isNew = !e;
   const d = e ? {
       title:e.title, member_id:e.member_id, ids:idsOf(e), date:evStartKey(e), endDate:evEndKey(e), all_day:e.all_day, birth_year:e.birth_year, invite:master(e).invite, inviter:master(e).inviter,
@@ -770,10 +774,10 @@ function openEditor(e, preset){
     } : Object.assign({ title:'', member_id: me.id, date: selDay < todayKey() ? todayKey() : selDay, endDate:null, all_day:false, start:'09:00', end:'10:00', note:'' }, preset||{});
   if (!d.endDate) d.endDate = d.date;
   const m0 = e ? master(e) : null;
-  let rep = m0 && m0.rrule ? m0.rrule : 'none', scope = 'all';
-  const lastKey = m0 && m0.rrule_until ? m0.rrule_until : '';
+  let rep = (m0 && m0.rrule) || (draft && d.rrule) || 'none', scope = 'all';
+  const lastKey = (m0 && m0.rrule_until) || (draft && d.rrule_until) || '';
   openSheet(`
-    <h3>${isNew?'Nová událost':'Upravit událost'}</h3>
+    <h3>${draft?'Upravit před uložením':isNew?'Nová událost':'Upravit událost'}</h3>
     <label class="field"><span>Co</span><input class="inp" id="f-title" placeholder="Zubař, práce, trénink…" value="${esc(d.title)}" maxlength="200"></label>
     <label class="field ${isBday(d.title)?'':'hidden'}" id="w-by"><span>Rok narození (aplikace pak ukáže věk)</span><input class="inp" id="f-by" type="number" inputmode="numeric" min="1900" max="2100" placeholder="např. 1956" value="${d.birth_year||''}"></label>
     <div class="field"><span>Kdo <small style="font-weight:600">(můžete vybrat víc lidí)</small></span><div class="who" id="f-who">
@@ -791,7 +795,7 @@ function openEditor(e, preset){
       <option value="weekly">Každý týden</option><option value="biweekly">Každý druhý týden</option><option value="monthly">Každý měsíc</option><option value="yearly">Každý rok (narozeniny, výročí)</option></select></label>
       <label class="field hidden" id="w-until"><span>Opakovat do <small style="font-weight:600">(nevyplněno = napořád)</small></span><input class="inp" type="date" id="f-until" value=""></label>`:''}
     <label class="field"><span>Poznámka</span><textarea class="inp" id="f-note" placeholder="Adresa, co vzít s sebou…">${esc(d.note)}</textarea></label>
-    <div class="actions"><button class="btn ghost" id="f-cancel">Zrušit</button><button class="btn" id="f-save">Uložit</button></div>`,
+    <div class="actions"><button class="btn ghost" id="f-cancel">${draft?'Zpět':'Zrušit'}</button><button class="btn" id="f-save">${draft?'Hotovo':'Uložit'}</button></div>`,
   s => {
     let who = d.ids ? [...d.ids] : (d.member_id ? [d.member_id] : []), allDay = d.all_day, inviteOn = !!d.invite;
     const setWho = () => s.querySelectorAll('#f-who button').forEach(b => { const on = b.dataset.id ? who.includes(b.dataset.id) : !who.length; b.classList.toggle('on',on); b.style.background = on ? b.dataset.c : ''; });
@@ -806,7 +810,7 @@ function openEditor(e, preset){
     const r = s.querySelector('#f-rep'); if (r){ r.value = rep; s.querySelector('#w-until').classList.toggle('hidden', rep==='none'); if (lastKey) s.querySelector('#f-until').value = lastKey; }
     const sc = s.querySelector('#f-scope'); if (sc) sc.onclick = ev => { const b=ev.target.closest('button'); if(!b) return; scope=b.dataset.s; sc.querySelectorAll('button').forEach(x=>{ x.classList.toggle('on',x===b); x.style.background = x===b?'var(--accent)':''; }); s.querySelector('#w-rep').classList.toggle('hidden', scope==='one'); s.querySelector('#w-until').classList.toggle('hidden', scope==='one' || rep==='none'); };
     if (r) r.onchange = () => { rep=r.value; s.querySelector('#w-until').classList.toggle('hidden', rep==='none'); if (rep==='yearly' && !allDay){ allDay=true; setAll(); } };
-    s.querySelector('#f-cancel').onclick = () => e ? openDetail(e) : closeSheet();
+    s.querySelector('#f-cancel').onclick = () => draft ? draft(null) : e ? openDetail(e) : closeSheet();
     if (isNew && !d.title) setTimeout(()=>s.querySelector('#f-title').focus(), 300);
     s.querySelector('#f-save').onclick = async () => {
       const title = s.querySelector('#f-title').value.trim(); if (!title) { toast('Napište, o co jde'); return; }
@@ -824,6 +828,7 @@ function openEditor(e, preset){
       let error;
       const until = s.querySelector('#f-until').value || null;
       const row = Object.assign(mk(date), rep==='none' ? { rrule:null, rrule_until:null } : { rrule:rep, rrule_until:until });
+      if (draft){ draft(row); return; }
       const q = [];
       if (isNew) q.push(() => sb.from('events').insert(row).select());
       else if (!m0.rrule) q.push(() => sb.from('events').update(row).eq('id', m0.id));
@@ -989,7 +994,13 @@ function quickRow(p){
   else { starts = new Date(date+'T'+p.start); ends = p.end ? new Date(date+'T'+p.end) : null; if (ends && ends <= starts) ends.setDate(ends.getDate()+1); }
   return { title: p.title || 'Událost', invite: !!p.invite, inviter: p.invite ? me.id : null, birth_year: null, member_id: ids[0] || null, member_ids: ids, all_day: allDay, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, note: null, rrule: null, rrule_until: null };
 }
-function openQuick(listen){
+function rowPreset(r){ const s = new Date(r.starts_at), en = r.ends_at ? new Date(r.ends_at) : null;
+  return { title: r.title, ids: r.member_ids, member_id: r.member_id, date: keyOf(s), endDate: en && r.all_day ? keyOf(en) : keyOf(s), all_day: r.all_day, start: r.all_day ? '09:00' : hm(s), end: (!r.all_day && en) ? hm(en) : '', note: r.note || '', invite: r.invite, inviter: r.inviter, birth_year: r.birth_year, rrule: r.rrule, rrule_until: r.rrule_until }; }
+function describeRow(r){ const s = new Date(r.starts_at), en = r.ends_at ? new Date(r.ends_at) : null;
+  const who = r.member_ids && r.member_ids.length ? r.member_ids.map(i => (memberOf(i)||{}).name).filter(Boolean).join(', ') : 'Celá rodina';
+  const when = dayLabel(keyOf(s)).join(' ') + (r.all_day ? ', celý den' : ', ' + hm(s) + (en ? '–' + hm(en) : '')) + (r.rrule ? ' · ' + (REPTXT[r.rrule] || 'opakuje se') : '');
+  return `<div class="pt">${esc(r.title)}${r.invite ? ' 🙋' : ''}</div><div class="pm">${esc(when)} · ${esc(who)}</div>`; }
+function openQuick(listen, state){
   openSheet(`
     <h3>Přidat rychle</h3>
     <div class="listen ${listen&&SR?'':'hidden'}" id="q-listen"><button class="orb" id="q-orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><p id="q-status">Poslouchám…</p></div>
@@ -1000,24 +1011,34 @@ function openQuick(listen){
   s => {
     const inp = s.querySelector('#q-text'), prev = s.querySelector('#q-prev'), go = s.querySelector('#q-go');
     const orb = s.querySelector('#q-orb'), st = s.querySelector('#q-status');
-    let items = [];
+    let items = state ? state.items : [];
+    if (state) inp.value = state.text;
+    const draw = () => {
+      if (!items.length){ prev.innerHTML = ''; go.textContent = 'Pokračovat'; go.disabled = false; return; }
+      if (items.length === 1 && !items[0].row){ prev.innerHTML = `<div class="preview">${describe(items[0].p)}</div>`; go.textContent = 'Pokračovat'; go.disabled = false; return; }
+      prev.innerHTML = `<div class="qm-h">${items.length === 1 ? 'Událost k uložení' : 'Rozpoznal jsem ' + items.length + (items.length < 5 ? ' události' : ' událostí')}:</div>` + items.map((it, i) =>
+        `<div class="preview qm ${it.on ? '' : 'off'}"><input type="checkbox" data-i="${i}" ${it.on ? 'checked' : ''} aria-label="Uložit"><span class="qm-b" data-e="${i}">${it.row ? describeRow(it.row) : describe(Object.assign({}, it.p, it.p.start ? {} : { all_day: true }))}${it.row ? '<div class="qm-ok">✓ upraveno</div>' : ''}</span><button class="qm-ed" data-e="${i}" aria-label="Upravit">✏️</button></div>`).join('');
+      prev.querySelectorAll('input[type=checkbox]').forEach(c => c.onchange = () => { items[+c.dataset.i].on = c.checked; c.closest('.qm').classList.toggle('off', !c.checked); cnt(); });
+      prev.querySelectorAll('[data-e]').forEach(b => b.onclick = () => editItem(+b.dataset.e));
+      cnt();
+    };
     const upd = () => {
       const segs = splitCz(inp.value);
-      const old = items; items = segs.map((t, i) => ({ p: parseCz(t), on: old[i] ? old[i].on : true }));
-      if (!items.length){ prev.innerHTML = ''; go.textContent = 'Pokračovat'; return; }
-      if (items.length === 1){ prev.innerHTML = `<div class="preview">${describe(items[0].p)}</div>`; go.textContent = 'Pokračovat'; return; }
-      prev.innerHTML = `<div class="qm-h">Rozpoznal jsem ${items.length} ${items.length < 5 ? 'události' : 'událostí'}:</div>` + items.map((it, i) =>
-        `<label class="preview qm"><input type="checkbox" data-i="${i}" ${it.on ? 'checked' : ''}><span>${describe(Object.assign({}, it.p, it.p.start ? {} : { all_day: true }))}</span></label>`).join('');
-      prev.querySelectorAll('input[type=checkbox]').forEach(c => c.onchange = () => { items[+c.dataset.i].on = c.checked; cnt(); });
-      cnt();
+      const old = items; items = segs.map((t, i) => { const o = old.find(x => x.seg === t); return o ? o : { seg: t, p: parseCz(t), on: true }; });
+      draw();
+    };
+    const editItem = i => {
+      stopVoice(); const it = items[i];
+      const pre = it.row ? rowPreset(it.row) : Object.assign({}, it.p, it.p.start ? {} : { all_day: true });
+      openEditor(null, pre, row => { if (row){ it.row = row; it.on = true; } openQuick(false, { text: inp.value, items }); });
     };
     const cnt = () => { const k = items.filter(x => x.on).length; go.textContent = items.length > 1 ? (k ? 'Uložit ' + k + (k === 1 ? ' událost' : k < 5 ? ' události' : ' událostí') : 'Nic nevybráno') : 'Pokračovat'; go.disabled = items.length > 1 && !k; };
     inp.oninput = upd;
     s.querySelector('#q-cancel').onclick = closeSheet;
     go.onclick = async () => {
-      stopVoice(); orb.classList.remove('on'); upd();
-      if (items.length <= 1){ openEditor(null, parseCz(inp.value)); return; }
-      const rows = items.filter(x => x.on).map(x => quickRow(x.p)); if (!rows.length) return;
+      stopVoice(); orb.classList.remove('on');
+      if (items.length <= 1 && !(items[0] && items[0].row)){ openEditor(null, parseCz(inp.value)); return; }
+      const rows = items.filter(x => x.on).map(x => x.row || quickRow(x.p)); if (!rows.length) return;
       go.disabled = true; go.textContent = 'Ukládám…';
       const { data, error } = await sb.from('events').insert(rows).select();
       if (error){ go.disabled = false; cnt(); toast('Uložení se nepovedlo'); return; }
@@ -1025,7 +1046,8 @@ function openQuick(listen){
       await loadEvents(); closeSheet(); toast('Přidáno ' + rows.length + (rows.length < 5 ? ' události' : ' událostí'));
     };
     orb.onclick = () => { if (listening) finish(); else startRec(); };
-    if (listen && SR) startRec(); else setTimeout(()=>inp.focus(), 300);
+    if (state){ s.querySelector('#q-listen').classList.remove('hidden'); st.textContent = 'Klepněte na mikrofon a pokračujte v diktování'; draw(); }
+    else if (listen && SR) startRec(); else setTimeout(()=>inp.focus(), 300);
     function finish(){ listening = false; orb.classList.remove('on'); if (rec){ try { rec.stop(); } catch(_){} } st.textContent = inp.value.trim() ? 'Zkontrolujte a uložte' : 'Klepněte a mluvte'; }
     function startRec(){
       listening = true; orb.classList.add('on'); st.textContent = 'Poslouchám… až budete hotovi, klepněte na mikrofon';
@@ -1237,7 +1259,7 @@ function openHelp(){
   const sec = (ic, t, body) => `<div class="hlp"><div class="hlp-i">${ic}</div><div><b>${t}</b><p>${body}</p></div></div>`;
   openSheet(`<h3>Jak to funguje</h3>
     ${sec('➕','Přidání události','Oranžové <b>+</b> vpravo dole. U „Kdo“ můžete vybrat víc lidí, nebo nechat „Celá rodina“. Opakování: každý den, týden, 14 dní, měsíc nebo rok. „Opakovat do“ nechte prázdné = napořád.')}
-    ${sec('🎙️','Přidání hlasem','Mikrofon vedle +. Řekněte třeba „Matěj zubař ve čtvrtek v 15:30“ nebo „máma práce zítra od 8 do 16“. Mikrofon poslouchá, dokud ho sami nevypnete klepnutím. Můžete nadiktovat i víc událostí najednou, stačí je oddělit slovem „další“. Šotendář je rozdělí, vy jen zkontrolujete a uložíte.')}
+    ${sec('🎙️','Přidání hlasem','Mikrofon vedle +. Řekněte třeba „Matěj zubař ve čtvrtek v 15:30“ nebo „máma práce zítra od 8 do 16“. Mikrofon poslouchá, dokud ho sami nevypnete klepnutím. Můžete nadiktovat i víc událostí najednou, stačí je oddělit slovem „další“. Šotendář je rozdělí, každou můžete tužkou ✏️ otevřít a upravit a pak je uložíte všechny najednou.')}
     ${sec('🎡','Kolečko dole','Přejeďte palcem doleva = dopředu v čase, doprava = zpět. Švihnutím se roztočí. Klepnutím na číslo skočíte na den. Tlačítko <b>Dnes</b> vás vrátí na dnešek. Potáhnutím kolečka nahoru se ukáže celý měsíc, dolů zase přehled.')}
     ${sec('👤','Filtr podle lidí','Klepněte na jméno nahoře: uvidíte všechny jeho budoucí události, opakované jen jednou. <b>Všichni</b> nebo druhé klepnutí na jméno filtr zruší.')}
     ${sec('🗓️','Přehled a Měsíc','Přehled = seznam dní pod sebou. Měsíc = celý měsíc s tečkami, kdo má kdy program; klepnutím na den uvidíte jeho události.')}
