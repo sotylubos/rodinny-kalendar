@@ -1,5 +1,5 @@
 // Keeps the app shell available so it opens instantly from the home screen.
-const CACHE = 'rk-v3';
+const CACHE = 'rk-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
@@ -13,8 +13,8 @@ self.addEventListener('fetch', e => {
 });
 
 self.addEventListener('push', e => {
-  let d = {}; try { d = e.data.json(); } catch (_) { d = { title: 'Rodinný kalendář', body: e.data ? e.data.text() : '' }; }
-  e.waitUntil(self.registration.showNotification(d.title || 'Rodinný kalendář', {
+  let d = {}; try { d = e.data.json(); } catch (_) { d = { title: 'Šotendář', body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'Šotendář', {
     body: d.body || '', tag: d.tag, icon: 'icon.svg', data: { url: d.url || './' }
   }));
 });
