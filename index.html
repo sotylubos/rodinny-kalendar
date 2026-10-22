@@ -160,6 +160,9 @@ main{padding:4px 16px calc(230px + env(safe-area-inset-bottom))}
 .month-h h2{font-size:18px!important}
 .month-h .icon-btn{width:36px;height:36px;border-radius:12px}
 .top h1 .yr{font-family:Manrope,system-ui,sans-serif;font-size:17px;font-weight:700;color:var(--muted);letter-spacing:0;margin-left:2px}
+.top h1{white-space:nowrap;min-width:0;overflow:hidden}
+.top h1 .brand{font-family:Fraunces,serif;font-style:italic;font-size:17px;font-weight:600;color:var(--accent);letter-spacing:0;margin-left:10px;text-transform:none}
+@media (max-width:370px){ .top h1 .brand{font-size:15px;margin-left:7px} }
 .free{margin:0 4px 6px;padding:10px 14px;border-radius:14px;border:1.5px dashed var(--line);color:var(--muted);font-weight:600;font-size:14px}
 
 /* floating buttons */
@@ -355,7 +358,7 @@ function dayLabel(k){
   return [cap(s.slice(0,i).replace(',','')), s.slice(i+1)];
 }
 const cap = s => s ? s[0].toUpperCase()+s.slice(1) : s;
-function hdrTitle(d){ const p = fmtMonth.format(d).split(' '); return esc(p[0]) + ' <span class="yr">' + p[1] + '</span>'; }
+function hdrTitle(d){ const p = fmtMonth.format(d).split(' '); return esc(p[0]) + ' <span class="yr">' + p[1] + '</span><span class="brand">Šotendář</span>'; }
 function memberOf(id){ return members.find(m=>m.id===id); }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2400); }
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
