@@ -57,6 +57,28 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .seg{display:flex;background:var(--card);border-radius:14px;padding:4px;box-shadow:var(--shadow);margin-top:12px}
 .seg button{flex:1;height:36px;border-radius:10px;font-weight:700;font-size:14px;color:var(--muted)}
 .seg button.on{background:var(--ink);color:var(--bg)}
+.seg-n:not(:empty){display:inline-block;min-width:18px;height:18px;line-height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--accent);color:#fff;font-size:11px;font-weight:800;vertical-align:1px}
+body.shopping .dock, body.shopping #chips{display:none!important}
+.shop{padding-top:14px}
+.shop-add{display:flex;gap:8px}
+.shop-add .inp{flex:1;min-width:0}
+.sh-btn{flex:none;width:52px;height:52px;border-radius:16px;display:grid;place-items:center}
+.sh-btn svg{width:24px;height:24px}
+.sh-go{background:var(--accent);color:#fff}
+.sh-mic{background:var(--ink);color:var(--bg)}
+.sh-mic.on{background:var(--accent);color:#fff;box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 25%,transparent)}
+.shop .hint{margin:8px 4px 0}
+#sh-list{margin-top:12px}
+.si{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:16px;padding:12px 8px 12px 14px;margin-bottom:8px;box-shadow:var(--shadow);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.si-chk{flex:none;width:26px;height:26px;border-radius:8px;border:2.5px solid var(--line);display:grid;place-items:center;font-weight:900;color:#fff;font-size:15px}
+.si-t{flex:1;min-width:0;font-weight:700;font-size:17px;overflow-wrap:anywhere}
+.si>i{flex:none;width:22px;height:22px;border-radius:50%;color:#fff;font-style:normal;font-size:11px;font-weight:800;display:grid;place-items:center;opacity:.85}
+.si-x{flex:none;width:34px;height:34px;border-radius:10px;font-size:22px;line-height:1;color:var(--muted)}
+.si.done{box-shadow:none;background:transparent;border:1.5px dashed var(--line)}
+.si.done .si-chk{background:#1F8A4C;border-color:#1F8A4C}
+.si.done .si-t{text-decoration:line-through;color:var(--muted);font-weight:600}
+.shop-dh{display:flex;align-items:center;justify-content:space-between;margin:20px 4px 10px;color:var(--muted);font-weight:800;font-size:14px}
+.shop-dh button{color:var(--danger);font-weight:800;font-size:14px;padding:6px 4px}
 .chips{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:12px 0 4px}
 .chips::-webkit-scrollbar{display:none}
 .chip{min-width:0;height:34px;padding:0 4px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:13.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s,color .15s}
@@ -320,7 +342,7 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
       <button class="icon-btn" id="btn-search" aria-label="Hledat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
       <button class="avatar" id="btn-settings" aria-label="Nastavení"></button>
     </div>
-    <div class="seg"><button data-view="list" class="on">Přehled</button><button data-view="month">Měsíc</button></div>
+    <div class="seg"><button data-view="list" class="on">Přehled</button><button data-view="month">Měsíc</button><button data-view="shop">🛒 Nákup<span class="seg-n" id="shop-n"></span></button></div>
     <div class="chips" id="chips"></div>
   </div>
   <main id="main"></main>
@@ -497,7 +519,7 @@ async function boot(){
     show('noaccess'); return;
   }
   show('app'); render();
-  await loadEvents();
+  await loadEvents(); loadShop();
   subscribe();
 }
 function sameMail(a,b){ return a && b && a.toLowerCase()===b.toLowerCase(); }
@@ -550,8 +572,66 @@ function subscribe(){
     else { events = events.filter(e=>e.id!==p.new.id); events.push(p.new); events.sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)); }
     saveCache(); render(); if (!$('#scr-search').classList.contains('hidden')) runSearch();
   }).subscribe();
+  sb.channel('shop').on('postgres_changes', { event:'*', schema:'public', table:'shopping_items' }, () => loadShop()).subscribe();
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me) loadEvents(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me){ loadEvents(); loadShop(); } });
+
+/* ================= nákupní seznam ================= */
+let shop = [];
+async function loadShop(){
+  const { data, error } = await sb.from('shopping_items').select('*').order('created_at');
+  if (error || !data) return; shop = data; shopBadge(); if (view==='shop' && !document.activeElement?.matches?.('#sh-inp')) renderShop(); else if (view==='shop') renderShopList();
+}
+function shopBadge(){ const n = shop.filter(x => !x.done).length; const b = $('#shop-n'); if (b) b.textContent = n ? n : ''; }
+function splitShop(t){ return String(t||'').split(/\s*(?:[,;\n]+|\s+a\s+|\s+(?:další|dále|pak|potom)\s+)\s*/i).map(x => x.trim().replace(/[.]+$/,'')).filter(x => x.length > 0).map(x => x.charAt(0).toUpperCase() + x.slice(1)); }
+function renderShop(){
+  const main = $('#main');
+  main.innerHTML = `<div class="shop">
+    <div class="shop-add"><input class="inp" id="sh-inp" placeholder="Co koupit? Např. mléko, chleba, máslo" autocomplete="off" enterkeyhint="done">
+      ${SR ? '<button class="sh-btn sh-mic" id="sh-mic" aria-label="Nadiktovat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>' : ''}
+      <button class="sh-btn sh-go" id="sh-go" aria-label="Přidat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Klepnutím věc odškrtnete.</div>
+    <div id="sh-list"></div></div>`;
+  const inp = $('#sh-inp');
+  const add = async () => { const items = splitShop(inp.value); if (!items.length) return; inp.value = '';
+    const rows = items.map(t => ({ text: t.slice(0,200), added_by: me.id }));
+    shop = shop.concat(rows.map(r => Object.assign({ id: 'tmp' + Math.random(), done: false, created_at: new Date().toISOString() }, r))); renderShopList(); shopBadge();
+    const { error } = await sb.from('shopping_items').insert(rows); if (error) toast('Uložení se nepovedlo'); loadShop(); };
+  $('#sh-go').onclick = add;
+  inp.onkeydown = e => { if (e.key === 'Enter') add(); };
+  const mic = $('#sh-mic');
+  if (mic) mic.onclick = () => {
+    if (listening){ stopVoice(); mic.classList.remove('on'); return; }
+    listening = true; mic.classList.add('on'); $('#sh-hint').textContent = 'Poslouchám… až budete hotovi, klepněte znovu na mikrofon.';
+    let base = inp.value.trim();
+    const session = () => { if (!listening) return;
+      try { const r = new SR(); rec = r; r.lang = 'cs-CZ'; r.interimResults = true; r.continuous = false;
+        r.onresult = ev => { let t = ''; for (const x of ev.results) t += x[0].transcript; inp.value = (base ? base + ', ' : '') + t.trim(); };
+        r.onerror = ev => { if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){ listening = false; mic.classList.remove('on'); } };
+        r.onend = () => { if (rec === r) rec = null; base = inp.value.trim(); if (listening) setTimeout(session, 120); else { mic.classList.remove('on'); $('#sh-hint').textContent = 'Zkontrolujte a přidejte tlačítkem +.'; } };
+        r.start(); } catch(e){ listening = false; mic.classList.remove('on'); } };
+    session();
+  };
+  renderShopList();
+}
+function renderShopList(){
+  const box = $('#sh-list'); if (!box) return;
+  const open = shop.filter(x => !x.done), done = shop.filter(x => x.done).sort((a,b) => new Date(b.done_at||0) - new Date(a.done_at||0));
+  const who = id => { const m = memberOf(id); return m ? `<i style="background:${m.color}">${esc(m.name[0])}</i>` : ''; };
+  const row = x => `<div class="si ${x.done ? 'done' : ''}" data-id="${x.id}"><span class="si-chk">${x.done ? '✓' : ''}</span><span class="si-t">${esc(x.text)}</span>${who(x.added_by)}<button class="si-x" data-x="${x.id}" aria-label="Smazat">×</button></div>`;
+  box.innerHTML = (open.length ? open.map(row).join('') : '<div class="free">Seznam je prázdný 🎉</div>') +
+    (done.length ? `<div class="shop-dh"><span>V košíku · ${done.length}</span><button id="sh-clear">Smazat nakoupené</button></div>` + done.map(row).join('') : '');
+  box.querySelectorAll('.si').forEach(el => el.onclick = async ev => {
+    const id = el.dataset.id; if (id.startsWith('tmp')) return;
+    if (ev.target.closest('.si-x')){ shop = shop.filter(x => x.id !== id); renderShopList(); shopBadge(); await sb.from('shopping_items').delete().eq('id', id); return; }
+    const it = shop.find(x => x.id === id); if (!it) return;
+    it.done = !it.done; it.done_at = it.done ? new Date().toISOString() : null; it.done_by = it.done ? me.id : null;
+    try { navigator.vibrate && navigator.vibrate(8); } catch(_){}
+    renderShopList(); shopBadge();
+    await sb.from('shopping_items').update({ done: it.done, done_at: it.done_at, done_by: it.done_by }).eq('id', id);
+  });
+  const cl = $('#sh-clear'); if (cl) cl.onclick = async () => { const ids = shop.filter(x => x.done).map(x => x.id); shop = shop.filter(x => !x.done); renderShopList(); await sb.from('shopping_items').delete().in('id', ids); toast('Nakoupené smazáno'); };
+}
 sb.auth.onAuthStateChange((evt) => { if (evt==='SIGNED_IN' && !booted) boot(); });
 
 /* ================= jmeniny, svátky, ikonky ================= */
@@ -584,6 +664,8 @@ function renderCore(){
   rebuildOcc();
   const av = $('#btn-settings'); av.style.background = me.color; const nn = newsList().filter(x => x.fresh).length;
   av.innerHTML = esc(me.name[0]) + (nn ? `<span class="nbadge">${nn > 9 ? '9+' : nn}</span>` : '');
+  document.body.classList.toggle('shopping', view==='shop'); shopBadge();
+  if (view==='shop'){ $('#hdr-title').innerHTML = 'Nákup<span class="brand">Šotendář</span>'; renderShop(); return; }
   $('#hdr-title').innerHTML = hdrTitle(view==='list' ? parseKey(selDay) : monthCursor);
   renderChips();
   if (view==='list') renderList(); else renderMonth();
@@ -1267,6 +1349,7 @@ function openHelp(){
     ${sec('✏️','Úprava a mazání','Klepněte na událost → Upravit / Smazat. U opakované zvolíte „Jen tuto“, nebo „Tuto i všechny další“.')}
     ${sec('🙋','Kdo se přidá?','Zapněte u události přepínač „Kdo se přidá?“ a ostatním přijde pozvánka. V události pak uvidíte, kdo jde ✓, kdo nejde ✕ a kdo ještě neodpověděl.')}
     ${sec('🆕','Nově přidané události','Když někdo přidá nebo upraví událost, objeví se na kolečku vpravo nahoře oranžové číslo. Klepněte na něj a pak na <b>🆕 Nově přidané</b>, rozbalí se, co kdo za poslední týden přidal nebo upravil. Nově přidané události přijdou i ve večerním přehledu v 19:00.')}
+    ${sec('🛒','Nákupní seznam','Nahoře <b>🛒 Nákup</b>. Kdokoli připíše, co je potřeba koupit, i hlasem a víc věcí najednou („mléko, chleba a máslo“). V obchodě klepnutím odškrtáváte, ostatní to vidí hned. Číslo u tlačítka ukazuje, kolik věcí zbývá koupit.')}
     ${sec('🔍','Hledání','Lupa nahoře. Najde události, jména lidí, jmeniny (např. „Lukáš“) i změny času („čas“).')}
     ${sec('🎂','Narozeniny','Když název obsahuje „narozeniny“, objeví se pole pro rok narození a kalendář pak ukazuje věk.')}
     ${sec('🌸','Jmeniny, svátky, změna času','U každého dne vpravo drobně jmeniny. Státní svátky červeně, změna času tyrkysově.')}
