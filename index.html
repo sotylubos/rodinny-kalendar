@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Šotendář</title>
 <meta name="theme-color" content="#F6F3EE" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#15171C" media="(prefers-color-scheme: dark)">
@@ -593,7 +593,7 @@ function renderShop(){
     <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Klepnutím věc odškrtnete.</div>
     <div id="sh-list"></div></div>`;
   const inp = $('#sh-inp');
-  const add = async () => { const items = splitShop(inp.value); if (!items.length) return; inp.value = '';
+  const add = async () => { const items = splitShop(inp.value); if (!items.length){ inp.focus(); return; } inp.value = '';
     const rows = items.map(t => ({ text: t.slice(0,200), added_by: me.id }));
     shop = shop.concat(rows.map(r => Object.assign({ id: 'tmp' + Math.random(), done: false, created_at: new Date().toISOString() }, r))); renderShopList(); shopBadge();
     const { error } = await sb.from('shopping_items').insert(rows); if (error) toast('Uložení se nepovedlo'); loadShop(); };
@@ -897,7 +897,7 @@ function openEditor(e, preset, draft){
     const sc = s.querySelector('#f-scope'); if (sc) sc.onclick = ev => { const b=ev.target.closest('button'); if(!b) return; scope=b.dataset.s; sc.querySelectorAll('button').forEach(x=>{ x.classList.toggle('on',x===b); x.style.background = x===b?'var(--accent)':''; }); s.querySelector('#w-rep').classList.toggle('hidden', scope==='one'); s.querySelector('#w-until').classList.toggle('hidden', scope==='one' || rep==='none'); };
     if (r) r.onchange = () => { rep=r.value; s.querySelector('#w-until').classList.toggle('hidden', rep==='none'); if (rep==='yearly' && !allDay){ allDay=true; setAll(); } };
     s.querySelector('#f-cancel').onclick = () => draft ? draft(null) : e ? openDetail(e) : closeSheet();
-    if (isNew && !d.title) setTimeout(()=>s.querySelector('#f-title').focus(), 300);
+    if (isNew && !d.title) s.querySelector('#f-title').focus({ preventScroll: true });
     s.querySelector('#f-save').onclick = async () => {
       const title = s.querySelector('#f-title').value.trim(); if (!title) { toast('Napište, o co jde'); return; }
       const date = s.querySelector('#f-date').value; if (!date) { toast('Vyberte datum'); return; }
@@ -1133,7 +1133,7 @@ function openQuick(listen, state){
     };
     orb.onclick = () => { if (listening) finish(); else startRec(); };
     if (state){ s.querySelector('#q-listen').classList.remove('hidden'); st.textContent = 'Klepněte na mikrofon a pokračujte v diktování'; draw(); }
-    else if (listen && SR) startRec(); else setTimeout(()=>inp.focus(), 300);
+    else if (listen && SR) startRec(); else inp.focus({ preventScroll: true });
     function finish(){ listening = false; orb.classList.remove('on'); if (rec){ try { rec.stop(); } catch(_){} } st.textContent = inp.value.trim() ? 'Zkontrolujte a uložte' : 'Klepněte a mluvte'; }
     function startRec(){
       listening = true; orb.classList.add('on'); st.textContent = 'Poslouchám… až budete hotovi, klepněte na mikrofon';
