@@ -250,17 +250,16 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
 .swatches button.on{border-color:var(--ink)}
 .toast{position:fixed;left:50%;bottom:calc(200px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:700;font-size:14px;opacity:0;transition:.25s;z-index:40;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%)}
-.dock{position:fixed;left:0;right:0;bottom:0;z-index:6;pointer-events:none;max-width:680px;margin:0 auto}
-.dock-row{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:0 16px 12px}
-.dock-row>*{pointer-events:auto}
-.dock .fab{width:56px;height:56px;border-radius:19px}
-.today-btn{height:44px;padding:0 18px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-weight:800;font-size:15px;color:var(--accent);opacity:0;transform:translateY(10px) scale(.85);transition:opacity .2s,transform .25s cubic-bezier(.2,.9,.3,1.3);pointer-events:none!important}
+.dock{position:fixed;right:0;bottom:0;z-index:6;pointer-events:none;--S:min(262px,70vw);width:var(--S);height:var(--S)}
+.dock .fab{position:absolute;pointer-events:auto;width:54px;height:54px;border-radius:18px}
+#btn-add{right:16px;bottom:calc(14px + env(safe-area-inset-bottom))}
+#btn-voice{right:16px;bottom:calc(80px + env(safe-area-inset-bottom))}
+.today-btn{position:absolute;right:82px;bottom:calc(20px + env(safe-area-inset-bottom));height:42px;padding:0 16px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-weight:800;font-size:15px;color:var(--accent);opacity:0;transform:translateY(10px) scale(.85);transition:opacity .2s,transform .25s cubic-bezier(.2,.9,.3,1.3);pointer-events:none!important}
 .today-btn.show{opacity:1;transform:none;pointer-events:auto!important}
-.dial{pointer-events:auto;position:relative;transition:transform .2s;height:calc(108px + env(safe-area-inset-bottom));overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;background:color-mix(in srgb,var(--card) 84%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:30px 30px 0 0;box-shadow:0 -8px 28px rgba(30,34,48,.10);cursor:grab}
+.dial{position:absolute;right:0;bottom:0;width:100%;height:100%;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;background:color-mix(in srgb,var(--card) 86%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top-left-radius:100%;box-shadow:-6px -6px 28px rgba(30,34,48,.12);cursor:grab;overflow:hidden}
 .dial:active{cursor:grabbing}
-.dial-rail{position:absolute;left:50%;border-radius:50%;border:1.5px dashed var(--line);pointer-events:none}
-.dial-mark{position:absolute;left:50%;top:7px;width:36px;height:5px;margin-left:-18px;border-radius:4px;background:var(--accent)}
-#dial-ticks{position:absolute;left:50%;width:0;height:0}
+.dial-rail{position:absolute;border-radius:50%;border:1.5px dashed var(--line);pointer-events:none}
+#dial-ticks{position:absolute;right:0;bottom:0;width:0;height:0}
 .tick{position:absolute;width:46px;height:60px;margin:-30px 0 0 -23px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-radius:17px;will-change:transform}
 .tick small{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;line-height:1.2}
 .tick b{font-size:18px;font-weight:800;line-height:1.1}
@@ -319,12 +318,10 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
   </div>
   <main id="main"></main>
   <div class="dock">
-  <div class="dock-row">
-    <button class="today-btn" id="btn-today">Dnes</button>
-    <button class="fab mic" id="btn-voice" aria-label="Přidat hlasem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
-    <button class="fab main" id="btn-add" aria-label="Přidat událost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
-  </div>
-  <div class="dial" id="dial"><div class="dial-rail" id="dial-rail"></div><div class="dial-mark"></div><div id="dial-ticks"></div></div>
+  <div class="dial" id="dial"><div class="dial-rail" id="dial-rail"></div><div id="dial-ticks"></div></div>
+  <button class="today-btn" id="btn-today">Dnes</button>
+  <button class="fab mic" id="btn-voice" aria-label="Přidat hlasem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+  <button class="fab main" id="btn-add" aria-label="Přidat událost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
   </div>
 </div>
 
@@ -1183,7 +1180,7 @@ async function initPushToggle(s){
 }
 
 /* ================= thumb dial ================= */
-const dial = { pos: 0, R: 520, STEP: 4.6, drag: null, anim: 0, last: null, quiet: false };
+const dial = { pos: 0, R: 220, STEP: 12, drag: null, anim: 0, last: null, quiet: false };
 const MONS = ['led','úno','bře','dub','kvě','čvn','čvc','srp','zář','říj','lis','pro'];
 const WDS = ['ne','po','út','st','čt','pá','so'];
 function dIdx(k){ return Math.round((parseKey(k) - parseKey(todayKey()))/864e5); }
@@ -1191,10 +1188,11 @@ function dKey(i){ return addDays(todayKey(), i); }
 function dialDraw(){
   const el = $('#dial-ticks'); if (!el) return;
   const c = Math.round(dial.pos); let h = '';
-  for (let i = c - 10; i <= c + 10; i++){
-    const a = (i - dial.pos) * dial.STEP; if (Math.abs(a) > 42) continue;
+  for (let i = c - 6; i <= c + 6; i++){
+    const a = 45 + (i - dial.pos) * dial.STEP; if (a < 0 || a > 90) continue;
+    const r = a * Math.PI / 180, x = -dial.R * Math.cos(r), y = -dial.R * Math.sin(r), op = a < 9 ? a / 9 : a > 81 ? (90 - a) / 9 : 1;
     const k = dKey(i), d = parseKey(k), wd = d.getDay();
-    h += '<div class="tick' + (i===c?' on':'') + (i===0?' today':'') + (wd===0||wd===6?' we':'') + (holiday(k)?' hol':'') + '" data-i="' + i + '" style="transform:rotate(' + a.toFixed(2) + 'deg) translateY(-' + dial.R + 'px);opacity:' + Math.max(0, 1 - Math.abs(a)/42).toFixed(2) + '"><small>' + (d.getDate()===1 ? MONS[d.getMonth()] : WDS[wd]) + '</small><b>' + d.getDate() + '</b><span class="dots">' + dotsFor(k,3) + '</span></div>';
+    h += '<div class="tick' + (i===c?' on':'') + (i===0?' today':'') + (wd===0||wd===6?' we':'') + (holiday(k)?' hol':'') + '" data-i="' + i + '" style="transform:translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px);opacity:' + Math.max(0, Math.min(1, op)).toFixed(2) + '"><small>' + (d.getDate()===1 ? MONS[d.getMonth()] : WDS[wd]) + '</small><b>' + d.getDate() + '</b><span class="dots">' + dotsFor(k,3) + '</span></div>';
   }
   el.innerHTML = h;
   $('#btn-today').classList.toggle('show', Math.abs(dial.pos) > .5);
@@ -1216,29 +1214,25 @@ function dialAnimate(to, user, ms){
 }
 function dialSync(){ if (dial.drag) return; const i = dIdx(selDay); if (Math.round(dial.pos) !== i){ dial.last = i; dialAnimate(i, false); } else dialDraw(); }
 function dialInit(){
-  const el = $('#dial'), ticks = $('#dial-ticks'), rail = $('#dial-rail');
-  const top = dial.R + 52; ticks.style.top = top + 'px';
-  const rr = dial.R + 34; Object.assign(rail.style, { width: 2*rr+'px', height: 2*rr+'px', marginLeft: -rr+'px', top: (top - rr)+'px' });
-  const pxPerDay = dial.R * dial.STEP * Math.PI / 180;
+  const el = $('#dial'), rail = $('#dial-rail');
+  const geo = () => { const S = el.offsetWidth || 260; dial.R = S - 44; const rr = dial.R; Object.assign(rail.style, { width: 2*rr+'px', height: 2*rr+'px', right: -rr+'px', bottom: -rr+'px' }); };
+  geo(); window.addEventListener('resize', () => { geo(); dialDraw(); });
+  const ang = ev => { const b = el.getBoundingClientRect(); return Math.atan2(b.bottom - ev.clientY, b.right - ev.clientX) * 180 / Math.PI; };
   el.addEventListener('pointerdown', ev => {
     cancelAnimationFrame(dial.anim); try { el.setPointerCapture(ev.pointerId); } catch(_){}
-    dial.drag = { x: ev.clientX, y: ev.clientY, p: dial.pos, moved: 0, mode: '', hist: [[performance.now(), ev.clientX]] };
+    const a = ang(ev); dial.drag = { x: ev.clientX, y: ev.clientY, a, p: dial.pos, moved: 0, hist: [[performance.now(), a]] };
   });
   el.addEventListener('pointermove', ev => { const g = dial.drag; if (!g) return;
-    const dx = ev.clientX - g.x, dy = ev.clientY - g.y;
-    if (!g.mode){ if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.3) g.mode = 'v'; else if (Math.abs(dx) > 8) g.mode = 'h'; }
-    if (g.mode === 'v'){ g.dy = dy; el.style.transform = `translateY(${Math.max(-40, Math.min(30, dy * .35))}px)`; return; }
-    g.moved = Math.max(g.moved, Math.abs(dx));
-    g.hist.push([performance.now(), ev.clientX]); if (g.hist.length > 6) g.hist.shift();
-    dialSet(g.p - dx / pxPerDay, true);
+    g.moved = Math.max(g.moved, Math.hypot(ev.clientX - g.x, ev.clientY - g.y));
+    const a = ang(ev); g.hist.push([performance.now(), a]); if (g.hist.length > 6) g.hist.shift();
+    dialSet(g.p - (a - g.a) / dial.STEP, true);
   });
   const end = ev => { const g = dial.drag; if (!g) return; dial.drag = null;
-    if (g.mode === 'v'){ el.style.transform = ''; if (g.dy < -40) setView('month'); else if (g.dy > 40) setView('list'); return; }
-    if (g.moved < 6){ const t = document.elementFromPoint(ev.clientX, ev.clientY); const tk = t && t.closest('.tick');
+    if (g.moved < 8){ const t = document.elementFromPoint(ev.clientX, ev.clientY); const tk = t && t.closest('.tick');
       if (tk) dialAnimate(+tk.dataset.i, true, 260); else dialAnimate(Math.round(dial.pos), true, 200); return; }
     const a = g.hist[0], b = g.hist[g.hist.length-1], dt = Math.max(1, b[0]-a[0]);
-    let v = -(b[1]-a[1]) / dt / pxPerDay; let prev = performance.now();
-    const coast = now => { const ms = now - prev; prev = now; v *= Math.pow(0.94, ms/16);
+    let v = -(b[1]-a[1]) / dt / dial.STEP; let prev = performance.now();
+    const coast = now => { const ms = now - prev; prev = now; v *= Math.pow(0.93, ms/16);
       if (Math.abs(v) < 0.0025){ dialAnimate(Math.round(dial.pos), true, 220); return; }
       dialSet(dial.pos + v * ms, true); dial.anim = requestAnimationFrame(coast); };
     dial.anim = requestAnimationFrame(coast);
@@ -1260,7 +1254,7 @@ function openHelp(){
   openSheet(`<h3>Jak to funguje</h3>
     ${sec('➕','Přidání události','Oranžové <b>+</b> vpravo dole. U „Kdo“ můžete vybrat víc lidí, nebo nechat „Celá rodina“. Opakování: každý den, týden, 14 dní, měsíc nebo rok. „Opakovat do“ nechte prázdné = napořád.')}
     ${sec('🎙️','Přidání hlasem','Mikrofon vedle +. Řekněte třeba „Matěj zubař ve čtvrtek v 15:30“ nebo „máma práce zítra od 8 do 16“. Mikrofon poslouchá, dokud ho sami nevypnete klepnutím. Můžete nadiktovat i víc událostí najednou, stačí je oddělit slovem „další“. Šotendář je rozdělí, každou můžete tužkou ✏️ otevřít a upravit a pak je uložíte všechny najednou.')}
-    ${sec('🎡','Kolečko dole','Přejeďte palcem doleva = dopředu v čase, doprava = zpět. Švihnutím se roztočí. Klepnutím na číslo skočíte na den. Tlačítko <b>Dnes</b> vás vrátí na dnešek. Potáhnutím kolečka nahoru se ukáže celý měsíc, dolů zase přehled.')}
+    ${sec('🎡','Kolečko s dny','Vpravo dole v rohu. Točte palcem po oblouku: nahoru = zpět v čase, dolů = dopředu. Švihnutím se roztočí. Klepnutím na číslo skočíte na den. Tlačítko <b>Dnes</b> vás vrátí na dnešek. Celý měsíc ukáže tlačítko <b>Měsíc</b> nahoře.')}
     ${sec('👤','Filtr podle lidí','Klepněte na jméno nahoře: uvidíte všechny jeho budoucí události, opakované jen jednou. <b>Všichni</b> nebo druhé klepnutí na jméno filtr zruší.')}
     ${sec('🗓️','Přehled a Měsíc','Přehled = seznam dní pod sebou. Měsíc = celý měsíc s tečkami, kdo má kdy program; klepnutím na den uvidíte jeho události.')}
     ${sec('✏️','Úprava a mazání','Klepněte na událost → Upravit / Smazat. U opakované zvolíte „Jen tuto“, nebo „Tuto i všechny další“.')}
