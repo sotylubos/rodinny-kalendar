@@ -1110,7 +1110,7 @@ function openSettings(){
   openSheet(`
     ${newsHtml()}
     <div class="actions" style="margin:0 0 12px"><button class="btn ghost" id="s-help">❓ Nápověda</button><button class="btn ghost" id="s-idea">💡 Mám nápad</button></div>
-    <div class="toggle"><span>Upozornění v 7:00 a 19:00<br><small style="color:var(--muted);font-weight:500">Ráno co je dnes, večer co je zítra</small></span><button class="sw" id="s-push" aria-label="Upozornění"></button></div>
+    <div class="toggle"><span>Upozornění<br><small style="color:var(--muted);font-weight:500">V 7:00 co je dnes, v 19:00 co je zítra a ve chvíli, kdy vaše událost začíná</small></span><button class="sw" id="s-push" aria-label="Upozornění"></button></div>
     <p class="hint" id="s-push-hint"></p>
     <details class="fam"><summary><span class="fam-av">${members.map(m=>`<span class="avatar" style="background:${m.color}">${esc(m.name[0])}</span>`).join('')}</span><span class="fam-t"><b>Rodina</b><small>${members.map(m=>esc(m.name)).join(', ')}</small></span><span class="fam-chev">›</span></summary>
     <p class="hint">Jména, barvy a e-maily. Každý se přihlašuje svým Google e-mailem.</p>
@@ -1269,7 +1269,7 @@ function openHelp(){
     ${sec('🔍','Hledání','Lupa nahoře. Najde události, jména lidí, jmeniny (např. „Lukáš“) i změny času („čas“).')}
     ${sec('🎂','Narozeniny','Když název obsahuje „narozeniny“, objeví se pole pro rok narození a kalendář pak ukazuje věk.')}
     ${sec('🌸','Jmeniny, svátky, změna času','U každého dne vpravo drobně jmeniny. Státní svátky červeně, změna času tyrkysově.')}
-    ${sec('🔔','Upozornění','V nastavení zapnete přehled v 7:00 (co je dnes) a v 19:00 (co je zítra). Na iPhonu jen v aplikaci přidané na plochu.')}
+    ${sec('🔔','Upozornění','V nastavení zapnete přehled v 7:00 (co je dnes) a v 19:00 (co je zítra). Navíc v čase, kdy událost začíná, přijde připomínka ⏰ tomu, koho se týká (u „Celá rodina“ všem). Celodenní události připomíná ranní přehled.')}
     <div class="actions" style="margin-top:14px"><button class="btn ghost" id="h-back">Zpět</button><button class="btn" id="h-idea">💡 Mám nápad</button></div>`, s => {
     s.querySelector('#h-back').onclick = openSettings;
     s.querySelector('#h-idea').onclick = openIdeas;
