@@ -595,8 +595,8 @@ const SHOP_CATS = [
   ['🍎','Ovoce', /jablk|jablic|hrus[ek]|banan|pomeranc|mandarin|klementin|citron|limet|hrozn|jahod|malin|borůvk|boruvk|ostruzin|svestk|merunk|broskv|nektarin|kiwi|ananas|meloun|avokad|mango|grep|tresn|visn|granatov|ovoce|datl|fik/],
   ['🥕','Zelenina', /brambor(?!ov[ýy] salat|ove lupin|ak)|cibul|cesnek|mrkev|mrkv|petrzel|celer|rajc|okurk|paprik|salat|ledovy|zeli|kapust|kvetak|brokolic|cuket|lilek|dyn|hub[ay]|houb|zampion|porek|redkvick|kedlub|spenat|zelenin|bylink|pazitk|kopr|rukol|repa|cervena repa|klicky|fazolk/],
   ['🍫','Sladkosti', /cokolad|bonbon|susenk|oplat|tycink|gumov|medvidk|sladkost|piskot|pernik|lizatk|nutell|zmrzlin|chips|brambur|bramborove lupin|krekr|slane|orisk|arasid|pistac|mandle|rozink|marsmallow|kinder|milka|bebe|horalk|tatranka/],
-  ['🍝','Těstoviny a trvanlivé', /testovin|spaget|kolink|vreten|penne|nudl|lasagn|ryz|mouk|cukr|sul\b|olej|ocet|kecup|horcic|majonez|tatark|konzerv|lusten|cock|fazol|hrach|cizrn|kuskus|bulgur|vlock|musli|cereal|koreni|pepr|polevk|omack|bujon|protlak|kukuric|tunak|sardink|med\b|dzem|marmelad|kakao|prasek do peciva|kypric|drozd|strouhank|knedlik/],
-  ['🥤','Nápoje', /voda|vody|mineralk|dzus|stav[ay]|sirup|limonad|cola|kola\b|pivo|piva|vino|vina\b|kava|kafe|caj|napoj|mattoni|juice|energet|tonic|sodovk|prosecco|sekt/],
+  ['🍝','Těstoviny a trvanlivé', /testovin|spaget|kolink|vreten|penne|nudl|lasagn|ryz|mouk|cukr|sul\b|olej|ocet|kecup|horcic|majonez|tatark|konzerv|lusten|cock|fazol|hrach|cizrn|kuskus|bulgur|vlock|musli|cereal|koreni|pepr|polevk|omack|bujon|protlak|kukuric|tunak|sardink|med\b|dzem|marmelad|kakao|prasek do peciva|kypric|drozd|strouhank/],
+  ['🥤','Nápoje', /voda|vody|mineralk|dzus|stav[ay]|sirup|limonad|cola|kola\b|caj|napoj|mattoni|juice|energet|tonic|sodovk/],
   ['🥖','Pečivo', /rohlik|chleb|chleba|baget|housk|vek[ay]|kaiser|toust|croissant|kolac|buchta|buchty|vanock|pecivo|loupak|dalaman|koblih|bulk|pita|tortil|wrap|pletyn|sateck/],
   ['🥓','Salámy a lahůdky', /salam|sunk|uzenin|park[ay]|parek|klobas|slanin|spek|vurt|pastik|lahud|pomazank(?!ove maslo)|vlassk|bramborov[ýy] salat|tlacenk|jitrnic|jelit|kure|kurec|kuraci|vepr|hovez|maso|mlete|rizk|steak|krkovic|plec|krut|ryb[ay]|losos|filet/],
   ['🧀','Sýry', /syr|syry|eidam|gouda|mozzarel|parmaz|niva|hermelin|tvaruzk|zerve|cottage|lucin|cedar|brynz|balkan|feta|ricott|mascarp/],
@@ -604,12 +604,16 @@ const SHOP_CATS = [
   ['🍦','Jogurty', /jogurt|pudink|actimel|skyr|termix|danon|ovocny tvaroh|kysel/],
   ['🧻','Kapesníky a papír', /kapesn|ubrous|toaletn|papir|uterk|vlhcen/],
   ['🧴','Drogerie', /sampon|mydl|zubni|pasta na zuby|kartack|praci|avivaz|\bjar\b|saponat|prasek|deodorant|sprchov|krem|holic|vlozk|tampon|cistic|savo|sack|pytl|alobal|foli|drogerie|plen|tablety do mycky|mycky|sul do|houbick|hadr|kosmetik|odlicov/],
-  ['🍬','Žvýkačky', /zvykack|zvejkack|orbit|mentos|tic ?tac|hallsk|halls/]
+  ['🍬','Žvýkačky', /zvykack|zvejkack|orbit|mentos|tic ?tac|hallsk|halls/],
+  ['☕','Káva', /kava|kavy|kafe|kafa|espresso|cappuccino|nescaf|jacobs|tchibo|kapsle/],
+  ['🍷','Alkohol', /pivo|piva|piv\b|vino|vina\b|prosecco|sekt|rum\b|vodk|slivovic|becherovk|whisk|gin\b|liker|fernet|tuzemak|alkohol|jagermeister|pilsner|radegast|kozel|budvar|gambrinus/],
+  ['🥟','Enpeka', /knedlik|knedl/]
 ];
-const CAT_ORDER = [12, 9, 10, 11, 6, 8, 7, 5, 4, 2, 3, 0, 1];
+const SHOP_SEQ = [0, 1, 2, 3, 13, 4, 5, 6, 14, 7, 8, 9, 10, 11, 12, 15];
+const CAT_ORDER = [12, 9, 10, 11, 15, 14, 13, 6, 8, 7, 5, 4, 2, 3, 0, 1];
 function catOf(t){ const n = norm(t); for (const i of CAT_ORDER){ if (SHOP_CATS[i][2].test(n)) return i; } return null; }
 const scat = x => x.cat != null ? x.cat : catOf(x.text);
-const ckey = x => { const c = scat(x); return c == null ? 99 : c; };
+const ckey = x => { const c = scat(x); return c == null ? 99 : SHOP_SEQ.indexOf(c); };
 const spos = x => x.pos != null ? x.pos : new Date(x.created_at).getTime() / 1000;
 function shopBadge(){ const n = shop.filter(x => !x.done).length; const b = $('#shop-n'); if (b) b.textContent = n ? n : ''; }
 function splitShop(t){ return String(t||'').split(/\s*(?:[,;\n]+|\s+a\s+|\s+(?:další|dále|pak|potom)\s+)\s*/i).map(x => x.trim().replace(/[.]+$/,'')).filter(x => x.length > 0).map(x => x.charAt(0).toUpperCase() + x.slice(1)); }
@@ -649,7 +653,7 @@ function renderShopList(){
   const open = shop.filter(x => !x.done).sort((a,b) => (ckey(a) - ckey(b)) || (spos(a) - spos(b))), done = shop.filter(x => x.done).sort((a,b) => new Date(b.done_at||0) - new Date(a.done_at||0));
   const who = id => { const m = memberOf(id); return m ? `<i style="background:${m.color}">${esc(m.name[0])}</i>` : ''; };
   const row = x => `<div class="si ${x.done ? 'done' : ''}" data-id="${x.id}">${x.done ? '' : '<span class="si-grip" aria-label="Přesunout">⋮⋮</span>'}<span class="si-chk">${x.done ? '✓' : ''}</span><span class="si-t">${esc(x.text)}</span>${who(x.added_by)}<button class="si-ed" aria-label="Upravit">✏️</button><button class="si-x" data-x="${x.id}" aria-label="Smazat">×</button></div>`;
-  let lastC = -1; const grouped = open.map(x => { const c = ckey(x); const hd = c !== lastC ? `<div class="sh-cat">${c === 99 ? '🛍️ Ostatní' : SHOP_CATS[c][0] + ' ' + SHOP_CATS[c][1]}</div>` : ''; lastC = c; return hd + row(x); }).join('');
+  let lastC = -1; const grouped = open.map(x => { const c = ckey(x); const sc = scat(x), hd = c !== lastC ? `<div class="sh-cat">${c === 99 ? '🛍️ Ostatní' : SHOP_CATS[sc][0] + ' ' + SHOP_CATS[sc][1]}</div>` : ''; lastC = c; return hd + row(x); }).join('');
   box.innerHTML = (open.length ? grouped : '<div class="free">Seznam je prázdný 🎉</div>') +
     (done.length ? `<div class="shop-dh"><span>V košíku · ${done.length}</span><button id="sh-clear">Smazat nakoupené</button></div>` + done.map(row).join('') : '');
   box.querySelectorAll('.si').forEach(el => el.onclick = async ev => {
