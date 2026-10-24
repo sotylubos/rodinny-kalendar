@@ -74,6 +74,9 @@ body.shopping .dock, body.shopping #chips{display:none!important}
 .si-t{flex:1;min-width:0;font-weight:700;font-size:17px;overflow-wrap:anywhere}
 .si>i{flex:none;width:22px;height:22px;border-radius:50%;color:#fff;font-style:normal;font-size:11px;font-weight:800;display:grid;place-items:center;opacity:.85}
 .si-x{flex:none;width:34px;height:34px;border-radius:10px;font-size:22px;line-height:1;color:var(--muted)}
+.si-grip{flex:none;width:32px;margin:-12px -8px -12px -12px;align-self:stretch;display:grid;place-items:center;color:var(--muted);font-size:15px;letter-spacing:-3px;font-weight:900;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.si.drag{position:relative;z-index:3;box-shadow:0 12px 30px rgba(0,0,0,.22);transition:none!important}
+#sh-list .si:not(.drag){transition:transform .15s}
 .si-ed{flex:none;width:34px;height:34px;border-radius:10px;font-size:15px;opacity:.7}
 .si.editing{cursor:default}
 .si-in{height:40px;font-size:16px;font-weight:700;padding:0 10px}
@@ -585,6 +588,7 @@ async function loadShop(){
   const { data, error } = await sb.from('shopping_items').select('*').order('created_at');
   if (error || !data) return; shop = data; shopBadge(); if (document.activeElement?.matches?.('.si-in')) return; if (view==='shop' && !document.activeElement?.matches?.('#sh-inp')) renderShop(); else if (view==='shop') renderShopList();
 }
+const spos = x => x.pos != null ? x.pos : new Date(x.created_at).getTime() / 1000;
 function shopBadge(){ const n = shop.filter(x => !x.done).length; const b = $('#shop-n'); if (b) b.textContent = n ? n : ''; }
 function splitShop(t){ return String(t||'').split(/\s*(?:[,;\n]+|\s+a\s+|\s+(?:další|dále|pak|potom)\s+)\s*/i).map(x => x.trim().replace(/[.]+$/,'')).filter(x => x.length > 0).map(x => x.charAt(0).toUpperCase() + x.slice(1)); }
 function renderShop(){
@@ -593,11 +597,12 @@ function renderShop(){
     <div class="shop-add"><input class="inp" id="sh-inp" placeholder="Co koupit? Např. mléko, chleba, máslo" autocomplete="off" enterkeyhint="done">
       ${SR ? '<button class="sh-btn sh-mic" id="sh-mic" aria-label="Nadiktovat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>' : ''}
       <button class="sh-btn sh-go" id="sh-go" aria-label="Přidat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
-    <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Klepnutím věc odškrtnete, tužkou ✏️ opravíte.</div>
+    <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Klepnutím věc odškrtnete, tužkou ✏️ opravíte, za ⋮⋮ chytnete a přesunete.</div>
     <div id="sh-list"></div></div>`;
   const inp = $('#sh-inp');
   const add = async () => { const items = splitShop(inp.value); if (!items.length){ inp.focus(); return; } inp.value = '';
-    const rows = items.map(t => ({ text: t.slice(0,200), added_by: me.id }));
+    const top = shop.reduce((m, x) => Math.max(m, spos(x)), Date.now() / 1000);
+    const rows = items.map((t, i) => ({ text: t.slice(0,200), added_by: me.id, pos: top + 1 + i }));
     shop = shop.concat(rows.map(r => Object.assign({ id: 'tmp' + Math.random(), done: false, created_at: new Date().toISOString() }, r))); renderShopList(); shopBadge();
     const { error } = await sb.from('shopping_items').insert(rows); if (error) toast('Uložení se nepovedlo'); loadShop(); };
   $('#sh-go').onclick = add;
@@ -619,13 +624,13 @@ function renderShop(){
 }
 function renderShopList(){
   const box = $('#sh-list'); if (!box) return;
-  const open = shop.filter(x => !x.done), done = shop.filter(x => x.done).sort((a,b) => new Date(b.done_at||0) - new Date(a.done_at||0));
+  const open = shop.filter(x => !x.done).sort((a,b) => spos(a) - spos(b)), done = shop.filter(x => x.done).sort((a,b) => new Date(b.done_at||0) - new Date(a.done_at||0));
   const who = id => { const m = memberOf(id); return m ? `<i style="background:${m.color}">${esc(m.name[0])}</i>` : ''; };
-  const row = x => `<div class="si ${x.done ? 'done' : ''}" data-id="${x.id}"><span class="si-chk">${x.done ? '✓' : ''}</span><span class="si-t">${esc(x.text)}</span>${who(x.added_by)}<button class="si-ed" aria-label="Upravit">✏️</button><button class="si-x" data-x="${x.id}" aria-label="Smazat">×</button></div>`;
+  const row = x => `<div class="si ${x.done ? 'done' : ''}" data-id="${x.id}">${x.done ? '' : '<span class="si-grip" aria-label="Přesunout">⋮⋮</span>'}<span class="si-chk">${x.done ? '✓' : ''}</span><span class="si-t">${esc(x.text)}</span>${who(x.added_by)}<button class="si-ed" aria-label="Upravit">✏️</button><button class="si-x" data-x="${x.id}" aria-label="Smazat">×</button></div>`;
   box.innerHTML = (open.length ? open.map(row).join('') : '<div class="free">Seznam je prázdný 🎉</div>') +
     (done.length ? `<div class="shop-dh"><span>V košíku · ${done.length}</span><button id="sh-clear">Smazat nakoupené</button></div>` + done.map(row).join('') : '');
   box.querySelectorAll('.si').forEach(el => el.onclick = async ev => {
-    const id = el.dataset.id; if (id.startsWith('tmp') || el.classList.contains('editing')) return;
+    const id = el.dataset.id; if (id.startsWith('tmp') || el.classList.contains('editing') || ev.target.closest('.si-grip')) return;
     if (ev.target.closest('.si-ed')){ const it = shop.find(x => x.id === id); if (!it) return;
       el.classList.add('editing'); const t = el.querySelector('.si-t');
       t.innerHTML = `<input class="inp si-in" value="${esc(it.text)}" maxlength="200" enterkeyhint="done">`; const inp = t.querySelector('input');
@@ -642,6 +647,33 @@ function renderShopList(){
     try { navigator.vibrate && navigator.vibrate(8); } catch(_){}
     renderShopList(); shopBadge();
     await sb.from('shopping_items').update({ done: it.done, done_at: it.done_at, done_by: it.done_by }).eq('id', id);
+  });
+  box.querySelectorAll('.si-grip').forEach(g => g.onpointerdown = ev => {
+    ev.preventDefault(); const el = g.closest('.si'); const list = [...box.querySelectorAll('.si:not(.done)')]; const from = list.indexOf(el); if (from < 0) return;
+    try { g.setPointerCapture(ev.pointerId); } catch(_){}
+    const rects = list.map(x => x.getBoundingClientRect()), step = rects.length > 1 ? rects[1].top - rects[0].top : rects[0].height + 8;
+    const y0 = ev.clientY, s0 = window.scrollY; let to = from, auto = 0, lastY = y0;
+    el.classList.add('drag'); try { navigator.vibrate && navigator.vibrate(10); } catch(_){}
+    const move = () => {
+      const dy = lastY - y0 + (window.scrollY - s0);
+      el.style.transform = `translateY(${dy}px)`;
+      to = Math.max(0, Math.min(list.length - 1, from + Math.round(dy / step)));
+      list.forEach((x, i) => { if (x === el) return; let sh = 0; if (from < to && i > from && i <= to) sh = -step; if (from > to && i >= to && i < from) sh = step; x.style.transform = sh ? `translateY(${sh}px)` : ''; });
+    };
+    const loop = () => { const edge = 90; const v = lastY < edge ? -(edge - lastY) / 6 : lastY > innerHeight - edge ? (lastY - (innerHeight - edge)) / 6 : 0; if (v){ window.scrollBy(0, v); move(); } auto = requestAnimationFrame(loop); };
+    auto = requestAnimationFrame(loop);
+    g.onpointermove = e => { lastY = e.clientY; move(); };
+    g.onpointerup = g.onpointercancel = async () => {
+      g.onpointermove = g.onpointerup = g.onpointercancel = null; cancelAnimationFrame(auto);
+      list.forEach(x => { x.style.transform = ''; }); el.classList.remove('drag');
+      if (to === from) return;
+      const ids = list.map(x => x.dataset.id); ids.splice(to, 0, ids.splice(from, 1)[0]);
+      const items = ids.map(i => shop.find(x => x.id === i)).filter(Boolean);
+      const prev = items[to - 1], next = items[to + 1], it = items[to];
+      it.pos = prev && next ? (spos(prev) + spos(next)) / 2 : prev ? spos(prev) + 1 : next ? spos(next) - 1 : spos(it);
+      renderShopList();
+      const r = await sb.from('shopping_items').update({ pos: it.pos }).eq('id', it.id); if (r.error) toast('Přesun se nepovedl');
+    };
   });
   const cl = $('#sh-clear'); if (cl) cl.onclick = async () => { const ids = shop.filter(x => x.done).map(x => x.id); shop = shop.filter(x => !x.done); renderShopList(); await sb.from('shopping_items').delete().in('id', ids); toast('Nakoupené smazáno'); };
 }
