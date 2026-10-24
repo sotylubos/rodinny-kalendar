@@ -77,6 +77,8 @@ body.shopping .dock, body.shopping #chips{display:none!important}
 .si-grip{flex:none;width:32px;margin:-12px -8px -12px -12px;align-self:stretch;display:grid;place-items:center;color:var(--muted);font-size:15px;letter-spacing:-3px;font-weight:900;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
 .si.drag{position:relative;z-index:3;box-shadow:0 12px 30px rgba(0,0,0,.22);transition:none!important}
 #sh-list .si:not(.drag){transition:transform .15s}
+.sh-cat{font-size:13px;font-weight:800;color:var(--muted);margin:14px 6px 6px;letter-spacing:.2px}
+.sh-cat:first-child{margin-top:4px}
 .si-ed{flex:none;width:34px;height:34px;border-radius:10px;font-size:15px;opacity:.7}
 .si.editing{cursor:default}
 .si-in{height:40px;font-size:16px;font-weight:700;padding:0 10px}
@@ -588,6 +590,26 @@ async function loadShop(){
   const { data, error } = await sb.from('shopping_items').select('*').order('created_at');
   if (error || !data) return; shop = data; shopBadge(); if (document.activeElement?.matches?.('.si-in')) return; if (view==='shop' && !document.activeElement?.matches?.('#sh-inp')) renderShop(); else if (view==='shop') renderShopList();
 }
+/* pořadí regálů v našem obchodě */
+const SHOP_CATS = [
+  ['🍎','Ovoce', /jablk|jablic|hrus[ek]|banan|pomeranc|mandarin|klementin|citron|limet|hrozn|jahod|malin|borůvk|boruvk|ostruzin|svestk|merunk|broskv|nektarin|kiwi|ananas|meloun|avokad|mango|grep|tresn|visn|granatov|ovoce|datl|fik/],
+  ['🥕','Zelenina', /brambor(?!ov[ýy] salat|ove lupin|ak)|cibul|cesnek|mrkev|mrkv|petrzel|celer|rajc|okurk|paprik|salat|ledovy|zeli|kapust|kvetak|brokolic|cuket|lilek|dyn|hub[ay]|houb|zampion|porek|redkvick|kedlub|spenat|zelenin|bylink|pazitk|kopr|rukol|repa|cervena repa|klicky|fazolk/],
+  ['🍫','Sladkosti', /cokolad|bonbon|susenk|oplat|tycink|gumov|medvidk|sladkost|piskot|pernik|lizatk|nutell|zmrzlin|chips|brambur|bramborove lupin|krekr|slane|orisk|arasid|pistac|mandle|rozink|marsmallow|kinder|milka|bebe|horalk|tatranka/],
+  ['🍝','Těstoviny a trvanlivé', /testovin|spaget|kolink|vreten|penne|nudl|lasagn|ryz|mouk|cukr|sul\b|olej|ocet|kecup|horcic|majonez|tatark|konzerv|lusten|cock|fazol|hrach|cizrn|kuskus|bulgur|vlock|musli|cereal|koreni|pepr|polevk|omack|bujon|protlak|kukuric|tunak|sardink|med\b|dzem|marmelad|kakao|prasek do peciva|kypric|drozd|strouhank|knedlik/],
+  ['🥤','Nápoje', /voda|vody|mineralk|dzus|stav[ay]|sirup|limonad|cola|kola\b|pivo|piva|vino|vina\b|kava|kafe|caj|napoj|mattoni|juice|energet|tonic|sodovk|prosecco|sekt/],
+  ['🥖','Pečivo', /rohlik|chleb|chleba|baget|housk|vek[ay]|kaiser|toust|croissant|kolac|buchta|buchty|vanock|pecivo|loupak|dalaman|koblih|bulk|pita|tortil|wrap|pletyn|sateck/],
+  ['🥓','Salámy a lahůdky', /salam|sunk|uzenin|park[ay]|parek|klobas|slanin|spek|vurt|pastik|lahud|pomazank(?!ove maslo)|vlassk|bramborov[ýy] salat|tlacenk|jitrnic|jelit|kure|kurec|kuraci|vepr|hovez|maso|mlete|rizk|steak|krkovic|plec|krut|ryb[ay]|losos|filet/],
+  ['🧀','Sýry', /syr|syry|eidam|gouda|mozzarel|parmaz|niva|hermelin|tvaruzk|zerve|cottage|lucin|cedar|brynz|balkan|feta|ricott|mascarp/],
+  ['🥛','Mléko a vejce', /mlek|mlik|smetan|maslo|masla|tvaroh|vejc|vajic|vajec|podmasl|kefir|slehack|acidofil|zakys/],
+  ['🍦','Jogurty', /jogurt|pudink|actimel|skyr|termix|danon|ovocny tvaroh|kysel/],
+  ['🧻','Kapesníky a papír', /kapesn|ubrous|toaletn|papir|uterk|vlhcen/],
+  ['🧴','Drogerie', /sampon|mydl|zubni|pasta na zuby|kartack|praci|avivaz|\bjar\b|saponat|prasek|deodorant|sprchov|krem|holic|vlozk|tampon|cistic|savo|sack|pytl|alobal|foli|drogerie|plen|tablety do mycky|mycky|sul do|houbick|hadr|kosmetik|odlicov/],
+  ['🍬','Žvýkačky', /zvykack|zvejkack|orbit|mentos|tic ?tac|hallsk|halls/]
+];
+const CAT_ORDER = [12, 9, 10, 11, 6, 8, 7, 5, 4, 2, 3, 0, 1];
+function catOf(t){ const n = norm(t); for (const i of CAT_ORDER){ if (SHOP_CATS[i][2].test(n)) return i; } return null; }
+const scat = x => x.cat != null ? x.cat : catOf(x.text);
+const ckey = x => { const c = scat(x); return c == null ? 99 : c; };
 const spos = x => x.pos != null ? x.pos : new Date(x.created_at).getTime() / 1000;
 function shopBadge(){ const n = shop.filter(x => !x.done).length; const b = $('#shop-n'); if (b) b.textContent = n ? n : ''; }
 function splitShop(t){ return String(t||'').split(/\s*(?:[,;\n]+|\s+a\s+|\s+(?:další|dále|pak|potom)\s+)\s*/i).map(x => x.trim().replace(/[.]+$/,'')).filter(x => x.length > 0).map(x => x.charAt(0).toUpperCase() + x.slice(1)); }
@@ -597,12 +619,12 @@ function renderShop(){
     <div class="shop-add"><input class="inp" id="sh-inp" placeholder="Co koupit? Např. mléko, chleba, máslo" autocomplete="off" enterkeyhint="done">
       ${SR ? '<button class="sh-btn sh-mic" id="sh-mic" aria-label="Nadiktovat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>' : ''}
       <button class="sh-btn sh-go" id="sh-go" aria-label="Přidat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
-    <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Klepnutím věc odškrtnete, tužkou ✏️ opravíte, za ⋮⋮ chytnete a přesunete.</div>
+    <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Seznam se sám řadí podle regálů v obchodě. Klepnutím věc odškrtnete, tužkou ✏️ opravíte, za ⋮⋮ přesunete.</div>
     <div id="sh-list"></div></div>`;
   const inp = $('#sh-inp');
   const add = async () => { const items = splitShop(inp.value); if (!items.length){ inp.focus(); return; } inp.value = '';
     const top = shop.reduce((m, x) => Math.max(m, spos(x)), Date.now() / 1000);
-    const rows = items.map((t, i) => ({ text: t.slice(0,200), added_by: me.id, pos: top + 1 + i }));
+    const rows = items.map((t, i) => ({ text: t.slice(0,200), added_by: me.id, pos: top + 1 + i, cat: catOf(t) }));
     shop = shop.concat(rows.map(r => Object.assign({ id: 'tmp' + Math.random(), done: false, created_at: new Date().toISOString() }, r))); renderShopList(); shopBadge();
     const { error } = await sb.from('shopping_items').insert(rows); if (error) toast('Uložení se nepovedlo'); loadShop(); };
   $('#sh-go').onclick = add;
@@ -624,10 +646,11 @@ function renderShop(){
 }
 function renderShopList(){
   const box = $('#sh-list'); if (!box) return;
-  const open = shop.filter(x => !x.done).sort((a,b) => spos(a) - spos(b)), done = shop.filter(x => x.done).sort((a,b) => new Date(b.done_at||0) - new Date(a.done_at||0));
+  const open = shop.filter(x => !x.done).sort((a,b) => (ckey(a) - ckey(b)) || (spos(a) - spos(b))), done = shop.filter(x => x.done).sort((a,b) => new Date(b.done_at||0) - new Date(a.done_at||0));
   const who = id => { const m = memberOf(id); return m ? `<i style="background:${m.color}">${esc(m.name[0])}</i>` : ''; };
   const row = x => `<div class="si ${x.done ? 'done' : ''}" data-id="${x.id}">${x.done ? '' : '<span class="si-grip" aria-label="Přesunout">⋮⋮</span>'}<span class="si-chk">${x.done ? '✓' : ''}</span><span class="si-t">${esc(x.text)}</span>${who(x.added_by)}<button class="si-ed" aria-label="Upravit">✏️</button><button class="si-x" data-x="${x.id}" aria-label="Smazat">×</button></div>`;
-  box.innerHTML = (open.length ? open.map(row).join('') : '<div class="free">Seznam je prázdný 🎉</div>') +
+  let lastC = -1; const grouped = open.map(x => { const c = ckey(x); const hd = c !== lastC ? `<div class="sh-cat">${c === 99 ? '🛍️ Ostatní' : SHOP_CATS[c][0] + ' ' + SHOP_CATS[c][1]}</div>` : ''; lastC = c; return hd + row(x); }).join('');
+  box.innerHTML = (open.length ? grouped : '<div class="free">Seznam je prázdný 🎉</div>') +
     (done.length ? `<div class="shop-dh"><span>V košíku · ${done.length}</span><button id="sh-clear">Smazat nakoupené</button></div>` + done.map(row).join('') : '');
   box.querySelectorAll('.si').forEach(el => el.onclick = async ev => {
     const id = el.dataset.id; if (id.startsWith('tmp') || el.classList.contains('editing') || ev.target.closest('.si-grip')) return;
@@ -636,7 +659,7 @@ function renderShopList(){
       t.innerHTML = `<input class="inp si-in" value="${esc(it.text)}" maxlength="200" enterkeyhint="done">`; const inp = t.querySelector('input');
       inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
       let fin = false; const save = async ok => { if (fin) return; fin = true; const v = inp.value.trim();
-        if (ok && v && v !== it.text){ it.text = v.slice(0,200); renderShopList(); const r = await sb.from('shopping_items').update({ text: it.text }).eq('id', id); if (r.error) toast('Uložení se nepovedlo'); }
+        if (ok && v && v !== it.text){ it.text = v.slice(0,200); const nc = catOf(it.text); if (nc != null) it.cat = nc; renderShopList(); const r = await sb.from('shopping_items').update({ text: it.text, cat: it.cat ?? null }).eq('id', id); if (r.error) toast('Uložení se nepovedlo'); }
         else renderShopList(); };
       inp.onkeydown = e => { if (e.key === 'Enter') save(true); else if (e.key === 'Escape') save(false); };
       inp.onblur = () => save(true); inp.onclick = e => e.stopPropagation();
@@ -651,13 +674,13 @@ function renderShopList(){
   box.querySelectorAll('.si-grip').forEach(g => g.onpointerdown = ev => {
     ev.preventDefault(); const el = g.closest('.si'); const list = [...box.querySelectorAll('.si:not(.done)')]; const from = list.indexOf(el); if (from < 0) return;
     try { g.setPointerCapture(ev.pointerId); } catch(_){}
-    const rects = list.map(x => x.getBoundingClientRect()), step = rects.length > 1 ? rects[1].top - rects[0].top : rects[0].height + 8;
+    const rects = list.map(x => x.getBoundingClientRect()), mids = rects.map(r => r.top + r.height / 2), step = rects[from].height + 8;
     const y0 = ev.clientY, s0 = window.scrollY; let to = from, auto = 0, lastY = y0;
     el.classList.add('drag'); try { navigator.vibrate && navigator.vibrate(10); } catch(_){}
     const move = () => {
       const dy = lastY - y0 + (window.scrollY - s0);
       el.style.transform = `translateY(${dy}px)`;
-      to = Math.max(0, Math.min(list.length - 1, from + Math.round(dy / step)));
+      const c = mids[from] + dy; to = from; let best = 1e9; mids.forEach((m, i) => { const d = Math.abs(m - c); if (d < best){ best = d; to = i; } });
       list.forEach((x, i) => { if (x === el) return; let sh = 0; if (from < to && i > from && i <= to) sh = -step; if (from > to && i >= to && i < from) sh = step; x.style.transform = sh ? `translateY(${sh}px)` : ''; });
     };
     const loop = () => { const edge = 90; const v = lastY < edge ? -(edge - lastY) / 6 : lastY > innerHeight - edge ? (lastY - (innerHeight - edge)) / 6 : 0; if (v){ window.scrollBy(0, v); move(); } auto = requestAnimationFrame(loop); };
@@ -670,9 +693,11 @@ function renderShopList(){
       const ids = list.map(x => x.dataset.id); ids.splice(to, 0, ids.splice(from, 1)[0]);
       const items = ids.map(i => shop.find(x => x.id === i)).filter(Boolean);
       const prev = items[to - 1], next = items[to + 1], it = items[to];
-      it.pos = prev && next ? (spos(prev) + spos(next)) / 2 : prev ? spos(prev) + 1 : next ? spos(next) - 1 : spos(it);
+      it.cat = prev ? scat(prev) : next ? scat(next) : scat(it);
+      const sameP = prev && ckey(prev) === ckey(it) ? prev : null, sameN = next && ckey(next) === ckey(it) ? next : null;
+      it.pos = sameP && sameN ? (spos(sameP) + spos(sameN)) / 2 : sameP ? spos(sameP) + 1 : sameN ? spos(sameN) - 1 : spos(it);
       renderShopList();
-      const r = await sb.from('shopping_items').update({ pos: it.pos }).eq('id', it.id); if (r.error) toast('Přesun se nepovedl');
+      const r = await sb.from('shopping_items').update({ pos: it.pos, cat: it.cat }).eq('id', it.id); if (r.error) toast('Přesun se nepovedl');
     };
   });
   const cl = $('#sh-clear'); if (cl) cl.onclick = async () => { const ids = shop.filter(x => x.done).map(x => x.id); shop = shop.filter(x => !x.done); renderShopList(); await sb.from('shopping_items').delete().in('id', ids); toast('Nakoupené smazáno'); };
