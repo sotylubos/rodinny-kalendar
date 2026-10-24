@@ -74,6 +74,9 @@ body.shopping .dock, body.shopping #chips{display:none!important}
 .si-t{flex:1;min-width:0;font-weight:700;font-size:17px;overflow-wrap:anywhere}
 .si>i{flex:none;width:22px;height:22px;border-radius:50%;color:#fff;font-style:normal;font-size:11px;font-weight:800;display:grid;place-items:center;opacity:.85}
 .si-x{flex:none;width:34px;height:34px;border-radius:10px;font-size:22px;line-height:1;color:var(--muted)}
+.si-ed{flex:none;width:34px;height:34px;border-radius:10px;font-size:15px;opacity:.7}
+.si.editing{cursor:default}
+.si-in{height:40px;font-size:16px;font-weight:700;padding:0 10px}
 .si.done{box-shadow:none;background:transparent;border:1.5px dashed var(--line)}
 .si.done .si-chk{background:#1F8A4C;border-color:#1F8A4C}
 .si.done .si-t{text-decoration:line-through;color:var(--muted);font-weight:600}
@@ -580,7 +583,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 let shop = [];
 async function loadShop(){
   const { data, error } = await sb.from('shopping_items').select('*').order('created_at');
-  if (error || !data) return; shop = data; shopBadge(); if (view==='shop' && !document.activeElement?.matches?.('#sh-inp')) renderShop(); else if (view==='shop') renderShopList();
+  if (error || !data) return; shop = data; shopBadge(); if (document.activeElement?.matches?.('.si-in')) return; if (view==='shop' && !document.activeElement?.matches?.('#sh-inp')) renderShop(); else if (view==='shop') renderShopList();
 }
 function shopBadge(){ const n = shop.filter(x => !x.done).length; const b = $('#shop-n'); if (b) b.textContent = n ? n : ''; }
 function splitShop(t){ return String(t||'').split(/\s*(?:[,;\n]+|\s+a\s+|\s+(?:další|dále|pak|potom)\s+)\s*/i).map(x => x.trim().replace(/[.]+$/,'')).filter(x => x.length > 0).map(x => x.charAt(0).toUpperCase() + x.slice(1)); }
@@ -590,7 +593,7 @@ function renderShop(){
     <div class="shop-add"><input class="inp" id="sh-inp" placeholder="Co koupit? Např. mléko, chleba, máslo" autocomplete="off" enterkeyhint="done">
       ${SR ? '<button class="sh-btn sh-mic" id="sh-mic" aria-label="Nadiktovat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>' : ''}
       <button class="sh-btn sh-go" id="sh-go" aria-label="Přidat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
-    <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Klepnutím věc odškrtnete.</div>
+    <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Klepnutím věc odškrtnete, tužkou ✏️ opravíte.</div>
     <div id="sh-list"></div></div>`;
   const inp = $('#sh-inp');
   const add = async () => { const items = splitShop(inp.value); if (!items.length){ inp.focus(); return; } inp.value = '';
@@ -618,11 +621,21 @@ function renderShopList(){
   const box = $('#sh-list'); if (!box) return;
   const open = shop.filter(x => !x.done), done = shop.filter(x => x.done).sort((a,b) => new Date(b.done_at||0) - new Date(a.done_at||0));
   const who = id => { const m = memberOf(id); return m ? `<i style="background:${m.color}">${esc(m.name[0])}</i>` : ''; };
-  const row = x => `<div class="si ${x.done ? 'done' : ''}" data-id="${x.id}"><span class="si-chk">${x.done ? '✓' : ''}</span><span class="si-t">${esc(x.text)}</span>${who(x.added_by)}<button class="si-x" data-x="${x.id}" aria-label="Smazat">×</button></div>`;
+  const row = x => `<div class="si ${x.done ? 'done' : ''}" data-id="${x.id}"><span class="si-chk">${x.done ? '✓' : ''}</span><span class="si-t">${esc(x.text)}</span>${who(x.added_by)}<button class="si-ed" aria-label="Upravit">✏️</button><button class="si-x" data-x="${x.id}" aria-label="Smazat">×</button></div>`;
   box.innerHTML = (open.length ? open.map(row).join('') : '<div class="free">Seznam je prázdný 🎉</div>') +
     (done.length ? `<div class="shop-dh"><span>V košíku · ${done.length}</span><button id="sh-clear">Smazat nakoupené</button></div>` + done.map(row).join('') : '');
   box.querySelectorAll('.si').forEach(el => el.onclick = async ev => {
-    const id = el.dataset.id; if (id.startsWith('tmp')) return;
+    const id = el.dataset.id; if (id.startsWith('tmp') || el.classList.contains('editing')) return;
+    if (ev.target.closest('.si-ed')){ const it = shop.find(x => x.id === id); if (!it) return;
+      el.classList.add('editing'); const t = el.querySelector('.si-t');
+      t.innerHTML = `<input class="inp si-in" value="${esc(it.text)}" maxlength="200" enterkeyhint="done">`; const inp = t.querySelector('input');
+      inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
+      let fin = false; const save = async ok => { if (fin) return; fin = true; const v = inp.value.trim();
+        if (ok && v && v !== it.text){ it.text = v.slice(0,200); renderShopList(); const r = await sb.from('shopping_items').update({ text: it.text }).eq('id', id); if (r.error) toast('Uložení se nepovedlo'); }
+        else renderShopList(); };
+      inp.onkeydown = e => { if (e.key === 'Enter') save(true); else if (e.key === 'Escape') save(false); };
+      inp.onblur = () => save(true); inp.onclick = e => e.stopPropagation();
+      return; }
     if (ev.target.closest('.si-x')){ shop = shop.filter(x => x.id !== id); renderShopList(); shopBadge(); await sb.from('shopping_items').delete().eq('id', id); return; }
     const it = shop.find(x => x.id === id); if (!it) return;
     it.done = !it.done; it.done_at = it.done ? new Date().toISOString() : null; it.done_by = it.done ? me.id : null;
