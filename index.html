@@ -77,6 +77,15 @@ body.shopping .dock, body.shopping #chips{display:none!important}
 .si-grip{flex:none;width:32px;margin:-12px -8px -12px -12px;align-self:stretch;display:grid;place-items:center;color:var(--muted);font-size:15px;letter-spacing:-3px;font-weight:900;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
 .si.drag{position:relative;z-index:3;box-shadow:0 12px 30px rgba(0,0,0,.22);transition:none!important}
 #sh-list .si:not(.drag){transition:transform .15s}
+.sug{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.sug:empty{display:none}
+.sug-b{padding:8px 12px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-weight:700;font-size:15px}
+.sug-b::before{content:'+ ';color:var(--accent)}
+.sh-hist{margin-top:10px;padding:10px 14px;border-radius:14px;background:var(--card);box-shadow:var(--shadow);font-weight:800;font-size:15px;width:100%;text-align:left}
+#sh-histp{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:6px 12px 12px;margin-top:6px}
+.hist-g{display:flex;flex-wrap:wrap;gap:6px}
+.hist-b{padding:7px 11px;border-radius:999px;border:1.5px solid var(--line);font-weight:600;font-size:14px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.hist-b.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .sh-cat{font-size:13px;font-weight:800;color:var(--muted);margin:14px 6px 6px;letter-spacing:.2px}
 .sh-cat:first-child{margin-top:4px}
 .si-ed{flex:none;width:34px;height:34px;border-radius:10px;font-size:15px;opacity:.7}
@@ -527,7 +536,7 @@ async function boot(){
     show('noaccess'); return;
   }
   show('app'); render();
-  await loadEvents(); loadShop();
+  await loadEvents(); loadShop(); loadKnown();
   subscribe();
 }
 function sameMail(a,b){ return a && b && a.toLowerCase()===b.toLowerCase(); }
@@ -580,9 +589,9 @@ function subscribe(){
     else { events = events.filter(e=>e.id!==p.new.id); events.push(p.new); events.sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)); }
     saveCache(); render(); if (!$('#scr-search').classList.contains('hidden')) runSearch();
   }).subscribe();
-  sb.channel('shop').on('postgres_changes', { event:'*', schema:'public', table:'shopping_items' }, () => loadShop()).subscribe();
+  sb.channel('shop').on('postgres_changes', { event:'*', schema:'public', table:'shopping_items' }, () => loadShop()).on('postgres_changes', { event:'*', schema:'public', table:'shopping_known' }, () => loadKnown()).subscribe();
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me){ loadEvents(); loadShop(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me){ loadEvents(); loadShop(); loadKnown(); } });
 
 /* ================= nákupní seznam ================= */
 let shop = [];
@@ -615,6 +624,47 @@ function catOf(t){ const n = norm(t); for (const i of CAT_ORDER){ if (SHOP_CATS[
 const scat = x => x.cat != null ? x.cat : catOf(x.text);
 const ckey = x => { const c = scat(x); return c == null ? 99 : SHOP_SEQ.indexOf(c); };
 const spos = x => x.pos != null ? x.pos : new Date(x.created_at).getTime() / 1000;
+let known = [];
+const knownKey = t => String(t||'').replace(/\s*\d+\s*(x|×|ks|kusy|kusů|kus)\.?\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+async function loadKnown(){ const { data } = await sb.from('shopping_known').select('*').order('uses', { ascending: false }).limit(1000); if (!data) return; known = data; if (view === 'shop'){ drawSuggest(); drawHistory(); } }
+function catFor(t){ const k = known.find(x => x.name === knownKey(t)); return k && k.cat != null ? k.cat : catOf(t); }
+const inList = t => shop.some(x => !x.done && knownKey(x.text) === knownKey(t));
+async function addTexts(items){
+  items = items.map(t => t.slice(0,200)).filter(Boolean); if (!items.length) return;
+  const top = shop.reduce((m, x) => Math.max(m, spos(x)), Date.now() / 1000);
+  const rows = items.map((t, i) => ({ text: t, added_by: me.id, pos: top + 1 + i, cat: catFor(t) }));
+  shop = shop.concat(rows.map(r => Object.assign({ id: 'tmp' + Math.random(), done: false, created_at: new Date().toISOString() }, r))); renderShopList(); shopBadge(); drawHistory();
+  const { error } = await sb.from('shopping_items').insert(rows); if (error) toast('Uložení se nepovedlo'); loadShop();
+}
+function drawSuggest(){
+  const inp = $('#sh-inp'), box = $('#sh-sug'); if (!inp || !box) return;
+  const frag = norm(inp.value.split(',').pop()).trim();
+  if (!frag){ box.innerHTML = ''; return; }
+  const hits = known.filter(k => { const n = norm(k.text); return (n.startsWith(frag) || n.includes(' ' + frag)) && !inList(k.text) && n !== frag; }).slice(0, 8);
+  box.innerHTML = hits.map(k => `<button class="sug-b" data-t="${esc(k.text)}">${esc(k.text)}</button>`).join('');
+  box.querySelectorAll('.sug-b').forEach(b => b.onclick = () => { const parts = inp.value.split(','); parts.pop(); inp.value = parts.map(x => x.trim()).filter(Boolean).join(', '); addTexts([b.dataset.t]); drawSuggest(); inp.focus(); });
+}
+let histOpen = false;
+function drawHistory(){
+  const btn = $('#sh-hist'), box = $('#sh-histp'); if (!btn || !box) return;
+  btn.textContent = (histOpen ? '▾ ' : '▸ ') + '📋 Dříve kupované' + (known.length ? ' (' + known.length + ')' : '');
+  box.hidden = !histOpen; if (!histOpen) return;
+  if (!known.length){ box.innerHTML = '<div class="free">Zatím nic. Co jednou koupíte, objeví se tady.</div>'; return; }
+  const groups = new Map();
+  known.forEach(k => { const c = k.cat != null ? k.cat : catOf(k.text); const key = c == null ? 99 : SHOP_SEQ.indexOf(c); if (!groups.has(key)) groups.set(key, { c, items: [] }); groups.get(key).items.push(k); });
+  box.innerHTML = [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([key, g]) => `<div class="sh-cat">${key === 99 ? '🛍️ Ostatní' : SHOP_CATS[g.c][0] + ' ' + SHOP_CATS[g.c][1]}</div><div class="hist-g">` +
+    g.items.sort((a, b) => a.text.localeCompare(b.text, 'cs')).map(k => { const on = inList(k.text); return `<button class="hist-b ${on ? 'on' : ''}" data-t="${esc(k.text)}">${on ? '✓ ' : ''}${esc(k.text)}</button>`; }).join('') + '</div>').join('') +
+    '<div class="hint" style="margin-top:10px">Klepnutím přidáte do nákupu, dalším klepnutím zase odeberete. Dlouhým podržením položku z historie smažete.</div>';
+  box.querySelectorAll('.hist-b').forEach(b => {
+    let t0 = 0, held = false;
+    b.onpointerdown = () => { held = false; t0 = setTimeout(async () => { held = true; const k = known.find(x => x.text === b.dataset.t); if (!k) return; if (!confirm('Smazat „' + k.text + '“ z historie nákupů?')) return; known = known.filter(x => x !== k); drawHistory(); await sb.from('shopping_known').delete().eq('name', k.name); }, 700); };
+    b.onpointerup = b.onpointerleave = b.onpointercancel = () => clearTimeout(t0);
+    b.oncontextmenu = e => e.preventDefault();
+    b.onclick = async () => { if (held) return; const t = b.dataset.t;
+      if (inList(t)){ const it = shop.find(x => !x.done && knownKey(x.text) === knownKey(t)); if (!it || String(it.id).startsWith('tmp')) return; shop = shop.filter(x => x !== it); renderShopList(); shopBadge(); drawHistory(); await sb.from('shopping_items').delete().eq('id', it.id); }
+      else addTexts([t]); };
+  });
+}
 function shopBadge(){ const n = shop.filter(x => !x.done).length; const b = $('#shop-n'); if (b) b.textContent = n ? n : ''; }
 function splitShop(t){ return String(t||'').split(/\s*(?:[,;\n]+|\s+a\s+|\s+(?:další|dále|pak|potom)\s+)\s*/i).map(x => x.trim().replace(/[.]+$/,'')).filter(x => x.length > 0).map(x => x.charAt(0).toUpperCase() + x.slice(1)); }
 function renderShop(){
@@ -623,14 +673,16 @@ function renderShop(){
     <div class="shop-add"><input class="inp" id="sh-inp" placeholder="Co koupit? Např. mléko, chleba, máslo" autocomplete="off" enterkeyhint="done">
       ${SR ? '<button class="sh-btn sh-mic" id="sh-mic" aria-label="Nadiktovat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>' : ''}
       <button class="sh-btn sh-go" id="sh-go" aria-label="Přidat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <div class="sug" id="sh-sug"></div>
+    <button class="sh-hist" id="sh-hist">▸ 📋 Dříve kupované</button>
+    <div id="sh-histp" hidden></div>
     <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Seznam se sám řadí podle regálů v obchodě. Klepnutím věc odškrtnete, tužkou ✏️ opravíte, za ⋮⋮ přesunete.</div>
     <div id="sh-list"></div></div>`;
   const inp = $('#sh-inp');
-  const add = async () => { const items = splitShop(inp.value); if (!items.length){ inp.focus(); return; } inp.value = '';
-    const top = shop.reduce((m, x) => Math.max(m, spos(x)), Date.now() / 1000);
-    const rows = items.map((t, i) => ({ text: t.slice(0,200), added_by: me.id, pos: top + 1 + i, cat: catOf(t) }));
-    shop = shop.concat(rows.map(r => Object.assign({ id: 'tmp' + Math.random(), done: false, created_at: new Date().toISOString() }, r))); renderShopList(); shopBadge();
-    const { error } = await sb.from('shopping_items').insert(rows); if (error) toast('Uložení se nepovedlo'); loadShop(); };
+  const add = async () => { const items = splitShop(inp.value); if (!items.length){ inp.focus(); return; } inp.value = ''; drawSuggest(); addTexts(items); };
+  inp.oninput = drawSuggest;
+  $('#sh-hist').onclick = () => { histOpen = !histOpen; drawHistory(); };
+  drawHistory();
   $('#sh-go').onclick = add;
   inp.onkeydown = e => { if (e.key === 'Enter') add(); };
   const mic = $('#sh-mic');
@@ -640,7 +692,7 @@ function renderShop(){
     let base = inp.value.trim();
     const session = () => { if (!listening) return;
       try { const r = new SR(); rec = r; r.lang = 'cs-CZ'; r.interimResults = true; r.continuous = false;
-        r.onresult = ev => { let t = ''; for (const x of ev.results) t += x[0].transcript; inp.value = (base ? base + ', ' : '') + t.trim(); };
+        r.onresult = ev => { let t = ''; for (const x of ev.results) t += x[0].transcript; inp.value = (base ? base + ', ' : '') + t.trim(); drawSuggest(); };
         r.onerror = ev => { if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){ listening = false; mic.classList.remove('on'); } };
         r.onend = () => { if (rec === r) rec = null; base = inp.value.trim(); if (listening) setTimeout(session, 120); else { mic.classList.remove('on'); $('#sh-hint').textContent = 'Zkontrolujte a přidejte tlačítkem +.'; } };
         r.start(); } catch(e){ listening = false; mic.classList.remove('on'); } };
@@ -663,7 +715,7 @@ function renderShopList(){
       t.innerHTML = `<input class="inp si-in" value="${esc(it.text)}" maxlength="200" enterkeyhint="done">`; const inp = t.querySelector('input');
       inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
       let fin = false; const save = async ok => { if (fin) return; fin = true; const v = inp.value.trim();
-        if (ok && v && v !== it.text){ it.text = v.slice(0,200); const nc = catOf(it.text); if (nc != null) it.cat = nc; renderShopList(); const r = await sb.from('shopping_items').update({ text: it.text, cat: it.cat ?? null }).eq('id', id); if (r.error) toast('Uložení se nepovedlo'); }
+        if (ok && v && v !== it.text){ it.text = v.slice(0,200); const nc = catFor(it.text); if (nc != null) it.cat = nc; renderShopList(); const r = await sb.from('shopping_items').update({ text: it.text, cat: it.cat ?? null }).eq('id', id); if (r.error) toast('Uložení se nepovedlo'); }
         else renderShopList(); };
       inp.onkeydown = e => { if (e.key === 'Enter') save(true); else if (e.key === 'Escape') save(false); };
       inp.onblur = () => save(true); inp.onclick = e => e.stopPropagation();
