@@ -85,6 +85,11 @@ body.shopping .dock, body.shopping #chips{display:none!important}
 #sh-histp{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:6px 12px 12px;margin-top:6px}
 .hist-g{display:flex;flex-wrap:wrap;gap:6px}
 .hist-b{padding:7px 11px;border-radius:999px;border:1.5px solid var(--line);font-weight:600;font-size:14px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.hist-b{display:inline-flex;align-items:center;gap:6px}
+.hist-b img{width:22px;height:22px;border-radius:50%;object-fit:cover;margin-left:-4px}
+.si-ph{flex:none;width:40px;height:40px;border-radius:10px;object-fit:cover;margin:-6px 0}
+.si-edw{display:flex;gap:6px;align-items:center}
+.si-cam{flex:none;width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:18px;background:var(--bg);cursor:pointer}
 .hist-b.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .sh-cat{font-size:13px;font-weight:800;color:var(--muted);margin:14px 6px 6px;letter-spacing:.2px}
 .sh-cat:first-child{margin-top:4px}
@@ -627,6 +632,22 @@ const spos = x => x.pos != null ? x.pos : new Date(x.created_at).getTime() / 100
 let known = [];
 const knownKey = t => String(t||'').replace(/\s*\d+\s*(x|×|ks|kusy|kusů|kus)\.?\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
 async function loadKnown(){ const { data } = await sb.from('shopping_known').select('*').order('uses', { ascending: false }).limit(1000); if (!data) return; known = data; if (view === 'shop'){ drawSuggest(); drawHistory(); } }
+const photoUrl = p => p ? SB_URL + '/storage/v1/object/public/shop/' + p : '';
+const photoOf = t => { const k = known.find(x => x.name === knownKey(t)); return k && k.photo ? photoUrl(k.photo) : ''; };
+async function savePhoto(text, file){
+  try {
+    const bmp = await createImageBitmap(file); const s = Math.min(1, 480 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s); c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
+    const path = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2)) + '.jpg';
+    const up = await sb.storage.from('shop').upload(path, blob, { contentType: 'image/jpeg' }); if (up.error) throw up.error;
+    const name = knownKey(text), clean = text.replace(/\s*\d+\s*(x|×|ks|kusy|kusů|kus)\.?\s*$/i, '').trim();
+    const k = known.find(x => x.name === name); if (k) k.photo = path; else known.push({ name, text: clean, photo: path, uses: 1 });
+    const r = await sb.from('shopping_known').upsert({ name, text: k ? k.text : clean, photo: path }, { onConflict: 'name' }); if (r.error) throw r.error;
+    toast('Fotka uložena 📷'); renderShopList(); drawHistory();
+  } catch(e){ toast('Fotku se nepodařilo uložit'); }
+}
+function showPhoto(text){ const u = photoOf(text); if (!u) return; openSheet(`<h3>${esc(text)}</h3><img src="${u}" alt="" style="width:100%;border-radius:16px;display:block">`); }
 function catFor(t){ const k = known.find(x => x.name === knownKey(t)); return k && k.cat != null ? k.cat : catOf(t); }
 const inList = t => shop.some(x => !x.done && knownKey(x.text) === knownKey(t));
 async function addTexts(items){
@@ -653,7 +674,7 @@ function drawHistory(){
   const groups = new Map();
   known.forEach(k => { const c = k.cat != null ? k.cat : catOf(k.text); const key = c == null ? 99 : SHOP_SEQ.indexOf(c); if (!groups.has(key)) groups.set(key, { c, items: [] }); groups.get(key).items.push(k); });
   box.innerHTML = [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([key, g]) => `<div class="sh-cat">${key === 99 ? '🛍️ Ostatní' : SHOP_CATS[g.c][0] + ' ' + SHOP_CATS[g.c][1]}</div><div class="hist-g">` +
-    g.items.sort((a, b) => a.text.localeCompare(b.text, 'cs')).map(k => { const on = inList(k.text); return `<button class="hist-b ${on ? 'on' : ''}" data-t="${esc(k.text)}">${on ? '✓ ' : ''}${esc(k.text)}</button>`; }).join('') + '</div>').join('') +
+    g.items.sort((a, b) => a.text.localeCompare(b.text, 'cs')).map(k => { const on = inList(k.text); return `<button class="hist-b ${on ? 'on' : ''}" data-t="${esc(k.text)}">${k.photo ? `<img src="${photoUrl(k.photo)}" alt="" loading="lazy">` : ''}${on ? '✓ ' : ''}${esc(k.text)}</button>`; }).join('') + '</div>').join('') +
     '<div class="hint" style="margin-top:10px">Klepnutím přidáte do nákupu, dalším klepnutím zase odeberete. Dlouhým podržením položku z historie smažete.</div>';
   box.querySelectorAll('.hist-b').forEach(b => {
     let t0 = 0, held = false;
@@ -676,7 +697,7 @@ function renderShop(){
     <div class="sug" id="sh-sug"></div>
     <button class="sh-hist" id="sh-hist">▸ 📋 Dříve kupované</button>
     <div id="sh-histp" hidden></div>
-    <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Seznam se sám řadí podle regálů v obchodě. Klepnutím věc odškrtnete, tužkou ✏️ opravíte, za ⋮⋮ přesunete.</div>
+    <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Seznam se sám řadí podle regálů v obchodě. Klepnutím věc odškrtnete, tužkou ✏️ opravíte nebo přidáte fotku 📷, za ⋮⋮ přesunete.</div>
     <div id="sh-list"></div></div>`;
   const inp = $('#sh-inp');
   const add = async () => { const items = splitShop(inp.value); if (!items.length){ inp.focus(); return; } inp.value = ''; drawSuggest(); addTexts(items); };
@@ -704,21 +725,25 @@ function renderShopList(){
   const box = $('#sh-list'); if (!box) return;
   const open = shop.filter(x => !x.done).sort((a,b) => (ckey(a) - ckey(b)) || (spos(a) - spos(b))), done = shop.filter(x => x.done).sort((a,b) => new Date(b.done_at||0) - new Date(a.done_at||0));
   const who = id => { const m = memberOf(id); return m ? `<i style="background:${m.color}">${esc(m.name[0])}</i>` : ''; };
-  const row = x => `<div class="si ${x.done ? 'done' : ''}" data-id="${x.id}">${x.done ? '' : '<span class="si-grip" aria-label="Přesunout">⋮⋮</span>'}<span class="si-chk">${x.done ? '✓' : ''}</span><span class="si-t">${esc(x.text)}</span>${who(x.added_by)}<button class="si-ed" aria-label="Upravit">✏️</button><button class="si-x" data-x="${x.id}" aria-label="Smazat">×</button></div>`;
+  const row = x => `<div class="si ${x.done ? 'done' : ''}" data-id="${x.id}">${x.done ? '' : '<span class="si-grip" aria-label="Přesunout">⋮⋮</span>'}<span class="si-chk">${x.done ? '✓' : ''}</span>${photoOf(x.text) ? `<img class="si-ph" src="${photoOf(x.text)}" alt="" loading="lazy">` : ''}<span class="si-t">${esc(x.text)}</span>${who(x.added_by)}<button class="si-ed" aria-label="Upravit">✏️</button><button class="si-x" data-x="${x.id}" aria-label="Smazat">×</button></div>`;
   let lastC = -1; const grouped = open.map(x => { const c = ckey(x); const sc = scat(x), hd = c !== lastC ? `<div class="sh-cat">${c === 99 ? '🛍️ Ostatní' : SHOP_CATS[sc][0] + ' ' + SHOP_CATS[sc][1]}</div>` : ''; lastC = c; return hd + row(x); }).join('');
   box.innerHTML = (open.length ? grouped : '<div class="free">Seznam je prázdný 🎉</div>') +
     (done.length ? `<div class="shop-dh"><span>V košíku · ${done.length}</span><button id="sh-clear">Smazat nakoupené</button></div>` + done.map(row).join('') : '');
   box.querySelectorAll('.si').forEach(el => el.onclick = async ev => {
     const id = el.dataset.id; if (id.startsWith('tmp') || el.classList.contains('editing') || ev.target.closest('.si-grip')) return;
+    if (ev.target.closest('.si-ph')){ const it = shop.find(x => x.id === id); if (it) showPhoto(it.text); return; }
     if (ev.target.closest('.si-ed')){ const it = shop.find(x => x.id === id); if (!it) return;
       el.classList.add('editing'); const t = el.querySelector('.si-t');
-      t.innerHTML = `<input class="inp si-in" value="${esc(it.text)}" maxlength="200" enterkeyhint="done">`; const inp = t.querySelector('input');
+      t.innerHTML = `<span class="si-edw"><input class="inp si-in" value="${esc(it.text)}" maxlength="200" enterkeyhint="done"><label class="si-cam" aria-label="Vyfotit">📷<input type="file" accept="image/*" capture="environment" hidden></label></span>`; const inp = t.querySelector('.si-in');
+      let cam = false; const camL = t.querySelector('.si-cam'), camI = camL.querySelector('input');
+      camL.onpointerdown = () => { cam = true; }; camL.onclick = e => e.stopPropagation();
+      camI.onchange = async () => { const f = camI.files && camI.files[0]; const v = inp.value.trim() || it.text; if (f){ toast('Ukládám fotku…'); await savePhoto(v, f); } cam = false; save(true); };
       inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
       let fin = false; const save = async ok => { if (fin) return; fin = true; const v = inp.value.trim();
         if (ok && v && v !== it.text){ it.text = v.slice(0,200); const nc = catFor(it.text); if (nc != null) it.cat = nc; renderShopList(); const r = await sb.from('shopping_items').update({ text: it.text, cat: it.cat ?? null }).eq('id', id); if (r.error) toast('Uložení se nepovedlo'); }
         else renderShopList(); };
       inp.onkeydown = e => { if (e.key === 'Enter') save(true); else if (e.key === 'Escape') save(false); };
-      inp.onblur = () => save(true); inp.onclick = e => e.stopPropagation();
+      inp.onblur = () => setTimeout(() => { if (!cam) save(true); }, 250); inp.onclick = e => e.stopPropagation();
       return; }
     if (ev.target.closest('.si-x')){ shop = shop.filter(x => x.id !== id); renderShopList(); shopBadge(); await sb.from('shopping_items').delete().eq('id', id); return; }
     const it = shop.find(x => x.id === id); if (!it) return;
@@ -844,6 +869,7 @@ function renderList(){
   if (filter!=='all'){ renderPerson(); return; }
   const main = $('#main'); let h = '';
   const start = showPast ? addDays(selDay,-30) : selDay;
+  dial.rStart = start; dial.rEnd = addDays(start, rangeDays + (showPast?30:0) - 1);
   let shown = 0;
   if (!showPast) h += `<button class="more" id="btn-past" style="margin-top:4px">Zobrazit předchozí dny</button>`;
   for (let i=0, k=start; i < rangeDays + (showPast?30:0); i++, k=addDays(k,1)){
@@ -1413,7 +1439,21 @@ function dialDraw(){
   $('#btn-today').classList.toggle('show', Math.abs(dial.pos) > .5);
   if (view==='list') $('#hdr-title').innerHTML = hdrTitle(parseKey(dKey(c)));
 }
+function listY(k){ const secs = document.querySelectorAll('#main .day[id^="d-"]'); for (const s of secs){ if (s.id.slice(2) >= k) return s.getBoundingClientRect().top + window.scrollY; } return null; }
+function smoothTo(p){
+  const i = Math.floor(p), f = p - i, y1 = listY(dKey(i)); if (y1 == null) return;
+  let y2 = listY(dKey(i + 1)); if (y2 == null) y2 = y1;
+  const off = $('.top').getBoundingClientRect().height + 8;
+  window.scrollTo(0, Math.max(0, y1 + (y2 - y1) * f - off));
+}
 function dialSet(p, user){
+  if (user && view === 'list' && filter === 'all'){
+    dial.pos = p; const c = Math.round(p), k = dKey(c);
+    dial.quiet = true; clearTimeout(dial.qt); dial.qt = setTimeout(() => { dial.quiet = false; }, 200);
+    if (!dial.rStart || dKey(Math.floor(p) - 1) < dial.rStart || dKey(Math.ceil(p) + 10) > dial.rEnd){ selDay = k; showPast = true; if (rangeDays < 120) rangeDays = 120; renderCore(); }
+    if (c !== dial.last){ dial.last = c; selDay = k; try { navigator.vibrate && navigator.vibrate(3); } catch(e){} }
+    smoothTo(p); dialDraw(); return;
+  }
   dial.pos = p; const c = Math.round(p);
   if (c !== dial.last){ dial.last = c;
     if (user){ try { navigator.vibrate && navigator.vibrate(3); } catch(e){}
