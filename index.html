@@ -307,7 +307,7 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
 #btn-voice{right:16px;bottom:calc(80px + env(safe-area-inset-bottom))}
 .today-btn{position:absolute;right:82px;bottom:calc(20px + env(safe-area-inset-bottom));height:42px;padding:0 16px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-weight:800;font-size:15px;color:var(--accent);opacity:0;transform:translateY(10px) scale(.85);transition:opacity .2s,transform .25s cubic-bezier(.2,.9,.3,1.3);pointer-events:none!important}
 .today-btn.show{opacity:1;transform:none;pointer-events:auto!important}
-.dial{position:absolute;right:0;bottom:0;width:100%;height:100%;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;background:color-mix(in srgb,var(--card) 86%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top-left-radius:100%;box-shadow:-6px -6px 28px rgba(30,34,48,.12);cursor:grab;overflow:hidden}
+.dial{position:absolute;right:0;bottom:0;width:100%;height:100%;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;background:radial-gradient(circle at 100% 100%,transparent calc(var(--S) - 82px),color-mix(in srgb,var(--card) 88%,transparent) calc(var(--S) - 81px));border-top-left-radius:100%;box-shadow:-6px -6px 28px rgba(30,34,48,.12);cursor:grab;overflow:hidden}
 .dial:active{cursor:grabbing}
 .dial-rail{position:absolute;border-radius:50%;border:1.5px dashed var(--line);pointer-events:none}
 #dial-ticks{position:absolute;right:0;bottom:0;width:0;height:0}
@@ -855,13 +855,13 @@ function evCard(e, withDate, repKind){ CARDS[e.id] = e;
 }
 function renderPerson(){
   const m = memberOf(filter); if (!m){ filter = 'all'; renderList(); return; }
-  const from = selDay < todayKey() ? todayKey() : selDay;
+  const from = todayKey(); dial.rStart = '0000-00-00'; dial.rEnd = '9999-12-31';
   const mine = events.filter(e => idsOf(e).includes(filter)), byStart = (a,b)=>new Date(a.starts_at)-new Date(b.starts_at);
   const once = mine.filter(e => !e.rrule && evEndKey(e) >= from).sort(byStart);
   const reps = mine.filter(e => e.rrule).map(e => nextOcc(e, from)).filter(Boolean).sort(byStart);
   let h = `<div class="day-h" style="margin-top:14px"><h2 style="color:${m.color}">${esc(m.name)}</h2><span>${from===todayKey()?'všechno od dneška':'od '+fmtDM.format(parseKey(from))}</span></div>`;
   if (!once.length && !reps.length) h += `<div class="empty"><b>Nic v plánu</b>${esc(m.name)} zatím nemá žádné budoucí události.</div>`;
-  if (once.length) h += `<section class="day"><div class="day-h"><h2>Nadcházející</h2><span>${once.length}</span></div>${once.map(e=>evCard(e,true)).join('')}</section>`;
+  if (once.length) h += `<section class="day"><div class="day-h"><h2>Nadcházející</h2><span>${once.length}</span></div>${once.map(e=>`<div data-k="${evStartKey(e) < from ? from : evStartKey(e)}">${evCard(e,true)}</div>`).join('')}</section>`;
   if (reps.length) h += `<section class="day"><div class="day-h"><h2>Opakující se</h2><span>${reps.length}</span></div>${reps.map(e=>evCard(e,true,master(e).rrule)).join('')}</section>`;
   $('#main').innerHTML = h;
 }
@@ -1439,7 +1439,7 @@ function dialDraw(){
   $('#btn-today').classList.toggle('show', Math.abs(dial.pos) > .5);
   if (view==='list') $('#hdr-title').innerHTML = hdrTitle(parseKey(dKey(c)));
 }
-function listY(k){ const secs = document.querySelectorAll('#main .day[id^="d-"]'); for (const s of secs){ if (s.id.slice(2) >= k) return s.getBoundingClientRect().top + window.scrollY; } return null; }
+function listY(k){ const secs = document.querySelectorAll('#main .day[id^="d-"], #main [data-k]'); for (const s of secs){ if ((s.dataset.k || s.id.slice(2)) >= k) return s.getBoundingClientRect().top + window.scrollY; } return null; }
 function smoothTo(p){
   const i = Math.floor(p), f = p - i, y1 = listY(dKey(i)); if (y1 == null) return;
   let y2 = listY(dKey(i + 1)); if (y2 == null) y2 = y1;
@@ -1447,7 +1447,7 @@ function smoothTo(p){
   window.scrollTo(0, Math.max(0, y1 + (y2 - y1) * f - off));
 }
 function dialSet(p, user){
-  if (user && view === 'list' && filter === 'all'){
+  if (user && view === 'list'){
     dial.pos = p; const c = Math.round(p), k = dKey(c);
     dial.quiet = true; clearTimeout(dial.qt); dial.qt = setTimeout(() => { dial.quiet = false; }, 200);
     if (!dial.rStart || dKey(Math.floor(p) - 1) < dial.rStart || dKey(Math.ceil(p) + 10) > dial.rEnd){ selDay = k; showPast = true; if (rangeDays < 120) rangeDays = 120; renderCore(); }
