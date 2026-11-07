@@ -121,6 +121,10 @@ body.shopping .dock, body.shopping #chips{display:none!important}
 .ce-n{flex:1;min-width:0}
 .ce-b{flex:none;width:38px;height:44px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);font-size:17px;font-weight:800}
 .ce-b:disabled{opacity:.25;box-shadow:none}
+.ce-e{display:grid;place-items:center;cursor:pointer}
+.ce-pk{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;background:var(--card);border-radius:14px;padding:8px;margin:0 0 10px;box-shadow:var(--shadow)}
+.ce-pk button{height:40px;font-size:22px;border-radius:10px}
+.ce-pk button.on{background:var(--bg);outline:2px solid var(--accent)}
 .si-ed{flex:none;width:34px;height:34px;border-radius:10px;font-size:15px;opacity:.7}
 .si.editing{cursor:default}
 .si-in{height:40px;font-size:16px;font-weight:700;padding:0 10px}
@@ -653,7 +657,7 @@ const SHOP_CATS = [
 ];
 const SHOP_SEQ = [0, 1, 2, 3, 13, 4, 5, 6, 14, 7, 8, 9, 10, 11, 12, 15];
 const CAT_ORDER = [12, 9, 10, 11, 15, 14, 13, 6, 8, 7, 5, 4, 2, 3, 0, 1];
-function catOf(t){ const n = norm(t); for (const i of CAT_ORDER){ if (SHOP_CATS[i][2].test(n)) return i; } return null; }
+function catOf(t){ const n = norm(t); for (const i of CAT_ORDER.concat(SHOP_SEQ.filter(x => !CAT_ORDER.includes(x)))){ if (SHOP_SEQ.includes(i) && SHOP_CATS[i] && SHOP_CATS[i][2].test(n)) return i; } return null; }
 const okCat = c => c != null && SHOP_SEQ.includes(c);
 const scat = x => okCat(x.cat) ? x.cat : catOf(x.text);
 const ckey = x => { const c = scat(x); return c == null ? 99 : SHOP_SEQ.indexOf(c); };
@@ -662,7 +666,7 @@ let known = [];
 const knownKey = t => String(t||'').replace(/\s*\d+\s*(x|×|ks|kusy|kusů|kus)\.?\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
 async function loadCats(){
   let { data } = await sb.from('shop_cats').select('*').order('pos'); data = (data || []).filter(r => Number.isInteger(r.id) && r.name); if (!data.length) return;
-  data.forEach(r => { if (SHOP_CATS[r.id]){ SHOP_CATS[r.id][0] = r.emoji; SHOP_CATS[r.id][1] = r.name; } else SHOP_CATS[r.id] = [r.emoji, r.name, /(?!)/]; });
+  data.forEach(r => { if (SHOP_CATS[r.id]){ SHOP_CATS[r.id][0] = r.emoji; SHOP_CATS[r.id][1] = r.name; } else SHOP_CATS[r.id] = [r.emoji, r.name, /(?!)/]; if (r.match){ try { SHOP_CATS[r.id][2] = new RegExp(r.match); } catch(_){} } });
   SHOP_SEQ.length = 0; data.forEach(r => SHOP_SEQ.push(r.id));
   if (view === 'shop'){ renderShopList(); drawHistory(); }
 }
@@ -670,17 +674,19 @@ function catsEditor(){
   let list = SHOP_SEQ.map(id => ({ id, emoji: SHOP_CATS[id][0], name: SHOP_CATS[id][1] })), gone = [];
   let next = Math.max(15, ...SHOP_CATS.map((c, i) => c ? i : 0)) + 1;
   openSheet(`<h3>Oddělení v obchodě</h3>
-    <div class="hint" style="margin-top:0">Pořadí odpovídá cestě obchodem – nákupní seznam se podle něj řadí. Šipkami ↑↓ oddělení posunete, ikonku i název můžete přepsat.</div>
+    <div class="hint" style="margin-top:0">Pořadí odpovídá cestě obchodem – nákupní seznam se podle něj řadí. Šipkami ↑↓ oddělení posunete. Klepnutím na ikonku vyberete jinou, název můžete přepsat, košem 🗑️ oddělení smažete.</div>
     <div id="ce-l"></div>
     <button class="btn ghost" id="ce-add" style="width:100%;margin-top:8px">+ Přidat oddělení</button>
     <div class="actions" style="margin-top:18px"><button class="btn ghost" id="ce-x">Zrušit</button><button class="btn" id="ce-ok">Uložit</button></div>`, sh => {
-    const box = sh.querySelector('#ce-l');
+    const box = sh.querySelector('#ce-l'); let pk = -1;
+    const EMO = '🍎 🍏 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🫐 🍒 🍑 🥭 🍍 🥝 🍅 🥑 🥦 🥬 🥒 🌶️ 🫑 🌽 🥕 🧄 🧅 🥔 🍄 🥜 🌰 🫘 🍞 🥐 🥖 🥨 🥯 🧀 🥚 🥛 🧈 🥓 🥩 🍗 🐟 🍤 🥫 🫙 🧂 🍝 🍚 🍜 🥣 ☕ 🍵 🧃 🥤 💧 🍺 🍷 🥂 🍫 🍬 🍭 🍪 🍩 🍰 🍦 🍿 🥟 🧊 🧻 🧴 🧼 🪥 🧽 🧹 🧺 💊 🍼 🐶 🐱 🌸 🔧 🔋 💡 🎁 🛍️'.split(' ');
     const draw = focus => {
-      box.innerHTML = list.map((c, i) => `<div class="ce-r"><input class="inp ce-e" data-i="${i}" value="${esc(c.emoji)}" maxlength="8" aria-label="Ikonka"><input class="inp ce-n" data-i="${i}" value="${esc(c.name)}" maxlength="40" placeholder="Název oddělení"><button class="ce-b" data-i="${i}" data-m="-1" ${i ? '' : 'disabled'} aria-label="Nahoru">↑</button><button class="ce-b" data-i="${i}" data-m="1" ${i < list.length - 1 ? '' : 'disabled'} aria-label="Dolů">↓</button>${c.id > 15 ? `<button class="ce-b" data-i="${i}" data-d="1" aria-label="Smazat">🗑️</button>` : ''}</div>`).join('');
-      box.querySelectorAll('.ce-e').forEach(e => e.oninput = () => { list[+e.dataset.i].emoji = e.value.trim(); });
+      box.innerHTML = list.map((c, i) => `<div class="ce-r"><button class="inp ce-e" data-i="${i}" aria-label="Změnit ikonku">${esc(c.emoji)}</button><input class="inp ce-n" data-i="${i}" value="${esc(c.name)}" maxlength="40" placeholder="Název oddělení"><button class="ce-b" data-i="${i}" data-m="-1" ${i ? '' : 'disabled'} aria-label="Nahoru">↑</button><button class="ce-b" data-i="${i}" data-m="1" ${i < list.length - 1 ? '' : 'disabled'} aria-label="Dolů">↓</button><button class="ce-b" data-i="${i}" data-d="1" aria-label="Smazat">🗑️</button></div>` + (pk === i ? `<div class="ce-pk">${EMO.map(e => `<button data-pe="${e}" class="${e === c.emoji ? 'on' : ''}">${e}</button>`).join('')}</div>` : '')).join('');
+      box.querySelectorAll('[data-pe]').forEach(b => b.onclick = () => { list[pk].emoji = b.dataset.pe; pk = -1; draw(); });
+      box.querySelectorAll('.ce-e').forEach(e => e.onclick = () => { pk = pk === +e.dataset.i ? -1 : +e.dataset.i; draw(); });
       box.querySelectorAll('.ce-n').forEach(e => e.oninput = () => { list[+e.dataset.i].name = e.value.trim(); });
-      box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const i = +b.dataset.i, j = i + +b.dataset.m; [list[i], list[j]] = [list[j], list[i]]; draw(); });
-      box.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const c = list[+b.dataset.i]; if (!confirm('Smazat oddělení „' + (c.name || 'nové') + '“? Zboží z něj se přesune do Ostatní.')) return; if (!c.fresh) gone.push(c.id); list.splice(+b.dataset.i, 1); draw(); });
+      box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const i = +b.dataset.i, j = i + +b.dataset.m; [list[i], list[j]] = [list[j], list[i]]; if (pk === i) pk = j; else if (pk === j) pk = i; draw(); });
+      box.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const c = list[+b.dataset.i]; if (!confirm('Smazat oddělení „' + (c.name || 'nové') + '“? Zboží z něj se zařadí do jiného oddělení nebo do Ostatní.')) return; if (!c.fresh) gone.push(c.id); list.splice(+b.dataset.i, 1); pk = -1; draw(); });
       if (focus != null){ const f = box.querySelector(`.ce-n[data-i="${focus}"]`); f && (f.focus(), f.scrollIntoView({ block: 'center' })); }
     };
     draw();
