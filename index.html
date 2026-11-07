@@ -83,10 +83,13 @@ body.shopping .dock, body.shopping #chips{display:none!important}
 .sug-b::before{content:'+ ';color:var(--accent)}
 .sh-hist{margin-top:10px;padding:10px 14px;border-radius:14px;background:var(--card);box-shadow:var(--shadow);font-weight:800;font-size:15px;width:100%;text-align:left}
 #sh-histp{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:6px 12px 12px;margin-top:6px}
-.hist-g{display:flex;flex-wrap:wrap;gap:6px}
-.hist-b{padding:7px 11px;border-radius:999px;border:1.5px solid var(--line);font-weight:600;font-size:14px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-.hist-b{display:inline-flex;align-items:center;gap:6px}
-.hist-b img{width:22px;height:22px;border-radius:50%;object-fit:cover;margin-left:-4px}
+.hist-g{display:flex;flex-direction:column;gap:8px}
+.hist-b{display:flex;align-items:center;gap:14px;width:100%;padding:8px 14px 8px 8px;border-radius:16px;border:1.5px solid var(--line);font-weight:700;font-size:17px;text-align:left;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.hist-b img,.hist-b .hb-ph{flex:none;width:84px;height:84px;border-radius:12px;object-fit:cover;background:var(--bg)}
+.hist-b .hb-ph{display:grid;place-items:center;font-size:34px;opacity:.55}
+.hist-b .hb-t{flex:1;min-width:0}
+.hist-b .hb-s{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:20px;font-weight:800;background:var(--bg);color:var(--accent)}
+.hist-b.on .hb-s{background:#fff}
 .si-ph{flex:none;width:40px;height:40px;border-radius:10px;object-fit:cover;margin:-6px 0}
 .si-edw{display:flex;gap:6px;align-items:center}
 .si-cam{flex:none;width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:18px;background:var(--bg);cursor:pointer}
@@ -674,7 +677,7 @@ function drawHistory(){
   const groups = new Map();
   known.forEach(k => { const c = k.cat != null ? k.cat : catOf(k.text); const key = c == null ? 99 : SHOP_SEQ.indexOf(c); if (!groups.has(key)) groups.set(key, { c, items: [] }); groups.get(key).items.push(k); });
   box.innerHTML = [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([key, g]) => `<div class="sh-cat">${key === 99 ? '🛍️ Ostatní' : SHOP_CATS[g.c][0] + ' ' + SHOP_CATS[g.c][1]}</div><div class="hist-g">` +
-    g.items.sort((a, b) => a.text.localeCompare(b.text, 'cs')).map(k => { const on = inList(k.text); return `<button class="hist-b ${on ? 'on' : ''}" data-t="${esc(k.text)}">${k.photo ? `<img src="${photoUrl(k.photo)}" alt="" loading="lazy">` : ''}${on ? '✓ ' : ''}${esc(k.text)}</button>`; }).join('') + '</div>').join('') +
+    g.items.sort((a, b) => a.text.localeCompare(b.text, 'cs')).map(k => { const on = inList(k.text); return `<button class="hist-b ${on ? 'on' : ''}" data-t="${esc(k.text)}">${k.photo ? `<img src="${photoUrl(k.photo)}" alt="" loading="lazy">` : `<span class="hb-ph">${key === 99 ? '🛍️' : SHOP_CATS[g.c][0]}</span>`}<span class="hb-t">${esc(k.text)}</span><span class="hb-s">${on ? '✓' : '+'}</span></button>`; }).join('') + '</div>').join('') +
     '<div class="hint" style="margin-top:10px">Klepnutím přidáte do nákupu, dalším klepnutím zase odeberete. Dlouhým podržením položku z historie smažete.</div>';
   box.querySelectorAll('.hist-b').forEach(b => {
     let t0 = 0, held = false;
