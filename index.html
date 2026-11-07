@@ -107,6 +107,20 @@ body.shopping .dock, body.shopping #chips{display:none!important}
 .hist-b.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .sh-cat{font-size:13px;font-weight:800;color:var(--muted);margin:14px 6px 6px;letter-spacing:.2px}
 .sh-cat:first-child{margin-top:4px}
+.hc{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font-size:15px;color:var(--ink);padding:12px 6px;margin:0;border-bottom:1px solid var(--line)}
+.hc .hc-a{width:14px;color:var(--muted)}
+.hc .hc-n{color:var(--muted);font-weight:700}
+.hc .hc-on{margin-left:auto;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:2px 9px;font-size:12px}
+.hc+.hist-g{padding:8px 0 6px}
+.hist-tl{display:flex;justify-content:flex-end;gap:14px;font-size:13px;font-weight:700;color:var(--accent);padding:4px 4px 0}
+.hist-go{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom));width:100%;margin-top:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:2}
+.sh-cfg{display:block;margin:26px auto 8px;font-size:13px;font-weight:700;color:var(--muted);padding:8px 12px}
+.ce-r{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.ce-r .inp{height:44px}
+.ce-e{flex:none;width:54px!important;text-align:center;padding:0 4px!important;font-size:20px!important}
+.ce-n{flex:1;min-width:0}
+.ce-b{flex:none;width:38px;height:44px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);font-size:17px;font-weight:800}
+.ce-b:disabled{opacity:.25;box-shadow:none}
 .si-ed{flex:none;width:34px;height:34px;border-radius:10px;font-size:15px;opacity:.7}
 .si.editing{cursor:default}
 .si-in{height:40px;font-size:16px;font-weight:700;padding:0 10px}
@@ -555,7 +569,7 @@ async function boot(){
     show('noaccess'); return;
   }
   show('app'); render();
-  await loadEvents(); loadShop(); loadKnown();
+  await loadEvents(); loadCats(); loadShop(); loadKnown();
   subscribe();
 }
 function sameMail(a,b){ return a && b && a.toLowerCase()===b.toLowerCase(); }
@@ -608,9 +622,9 @@ function subscribe(){
     else { events = events.filter(e=>e.id!==p.new.id); events.push(p.new); events.sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)); }
     saveCache(); render(); if (!$('#scr-search').classList.contains('hidden')) runSearch();
   }).subscribe();
-  sb.channel('shop').on('postgres_changes', { event:'*', schema:'public', table:'shopping_items' }, () => loadShop()).on('postgres_changes', { event:'*', schema:'public', table:'shopping_known' }, () => loadKnown()).subscribe();
+  sb.channel('shop').on('postgres_changes', { event:'*', schema:'public', table:'shopping_items' }, () => loadShop()).on('postgres_changes', { event:'*', schema:'public', table:'shopping_known' }, () => loadKnown()).on('postgres_changes', { event:'*', schema:'public', table:'shop_cats' }, () => loadCats()).subscribe();
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me){ loadEvents(); loadShop(); loadKnown(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me){ loadEvents(); loadCats(); loadShop(); loadKnown(); } });
 
 /* ================= nákupní seznam ================= */
 let shop = [];
@@ -640,11 +654,50 @@ const SHOP_CATS = [
 const SHOP_SEQ = [0, 1, 2, 3, 13, 4, 5, 6, 14, 7, 8, 9, 10, 11, 12, 15];
 const CAT_ORDER = [12, 9, 10, 11, 15, 14, 13, 6, 8, 7, 5, 4, 2, 3, 0, 1];
 function catOf(t){ const n = norm(t); for (const i of CAT_ORDER){ if (SHOP_CATS[i][2].test(n)) return i; } return null; }
-const scat = x => x.cat != null ? x.cat : catOf(x.text);
+const okCat = c => c != null && SHOP_SEQ.includes(c);
+const scat = x => okCat(x.cat) ? x.cat : catOf(x.text);
 const ckey = x => { const c = scat(x); return c == null ? 99 : SHOP_SEQ.indexOf(c); };
 const spos = x => x.pos != null ? x.pos : new Date(x.created_at).getTime() / 1000;
 let known = [];
 const knownKey = t => String(t||'').replace(/\s*\d+\s*(x|×|ks|kusy|kusů|kus)\.?\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+async function loadCats(){
+  let { data } = await sb.from('shop_cats').select('*').order('pos'); data = (data || []).filter(r => Number.isInteger(r.id) && r.name); if (!data.length) return;
+  data.forEach(r => { if (SHOP_CATS[r.id]){ SHOP_CATS[r.id][0] = r.emoji; SHOP_CATS[r.id][1] = r.name; } else SHOP_CATS[r.id] = [r.emoji, r.name, /(?!)/]; });
+  SHOP_SEQ.length = 0; data.forEach(r => SHOP_SEQ.push(r.id));
+  if (view === 'shop'){ renderShopList(); drawHistory(); }
+}
+function catsEditor(){
+  let list = SHOP_SEQ.map(id => ({ id, emoji: SHOP_CATS[id][0], name: SHOP_CATS[id][1] })), gone = [];
+  let next = Math.max(15, ...SHOP_CATS.map((c, i) => c ? i : 0)) + 1;
+  openSheet(`<h3>Oddělení v obchodě</h3>
+    <div class="hint" style="margin-top:0">Pořadí odpovídá cestě obchodem – nákupní seznam se podle něj řadí. Šipkami ↑↓ oddělení posunete, ikonku i název můžete přepsat.</div>
+    <div id="ce-l"></div>
+    <button class="btn ghost" id="ce-add" style="width:100%;margin-top:8px">+ Přidat oddělení</button>
+    <div class="actions" style="margin-top:18px"><button class="btn ghost" id="ce-x">Zrušit</button><button class="btn" id="ce-ok">Uložit</button></div>`, sh => {
+    const box = sh.querySelector('#ce-l');
+    const draw = focus => {
+      box.innerHTML = list.map((c, i) => `<div class="ce-r"><input class="inp ce-e" data-i="${i}" value="${esc(c.emoji)}" maxlength="8" aria-label="Ikonka"><input class="inp ce-n" data-i="${i}" value="${esc(c.name)}" maxlength="40" placeholder="Název oddělení"><button class="ce-b" data-i="${i}" data-m="-1" ${i ? '' : 'disabled'} aria-label="Nahoru">↑</button><button class="ce-b" data-i="${i}" data-m="1" ${i < list.length - 1 ? '' : 'disabled'} aria-label="Dolů">↓</button>${c.id > 15 ? `<button class="ce-b" data-i="${i}" data-d="1" aria-label="Smazat">🗑️</button>` : ''}</div>`).join('');
+      box.querySelectorAll('.ce-e').forEach(e => e.oninput = () => { list[+e.dataset.i].emoji = e.value.trim(); });
+      box.querySelectorAll('.ce-n').forEach(e => e.oninput = () => { list[+e.dataset.i].name = e.value.trim(); });
+      box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const i = +b.dataset.i, j = i + +b.dataset.m; [list[i], list[j]] = [list[j], list[i]]; draw(); });
+      box.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const c = list[+b.dataset.i]; if (!confirm('Smazat oddělení „' + (c.name || 'nové') + '“? Zboží z něj se přesune do Ostatní.')) return; if (!c.fresh) gone.push(c.id); list.splice(+b.dataset.i, 1); draw(); });
+      if (focus != null){ const f = box.querySelector(`.ce-n[data-i="${focus}"]`); f && (f.focus(), f.scrollIntoView({ block: 'center' })); }
+    };
+    draw();
+    sh.querySelector('#ce-add').onclick = () => { list.push({ id: next++, emoji: '🛍️', name: '', fresh: true }); draw(list.length - 1); };
+    sh.querySelector('#ce-x').onclick = closeSheet;
+    sh.querySelector('#ce-ok').onclick = async () => {
+      list = list.filter(c => c.name || !c.fresh);
+      if (list.some(c => !c.name)){ toast('Každé oddělení potřebuje název'); return; }
+      closeSheet();
+      const rows = list.map((c, i) => ({ id: c.id, emoji: c.emoji || '🛍️', name: c.name.slice(0, 40), pos: i }));
+      const r = await sb.from('shop_cats').upsert(rows, { onConflict: 'id' }); if (r.error){ toast('Uložení se nepovedlo'); return; }
+      for (const id of gone){ await sb.from('shop_cats').delete().eq('id', id); await sb.from('shopping_items').update({ cat: null }).eq('cat', id); await sb.from('shopping_known').update({ cat: null }).eq('cat', id); }
+      gone.forEach(id => { shop.forEach(x => { if (x.cat === id) x.cat = null; }); known.forEach(x => { if (x.cat === id) x.cat = null; }); });
+      toast('Oddělení uložena'); loadCats();
+    };
+  });
+}
 async function loadKnown(){ const { data } = await sb.from('shopping_known').select('*').order('uses', { ascending: false }).limit(1000); if (!data) return; known = data; if (view === 'shop'){ drawSuggest(); drawHistory(); } }
 const photoUrl = p => p ? SB_URL + '/storage/v1/object/public/shop/' + p : '';
 const photoOf = t => { const k = known.find(x => x.name === knownKey(t)); return k && k.photo ? photoUrl(k.photo) : ''; };
@@ -722,23 +775,32 @@ function drawSuggest(){
   box.querySelectorAll('.sug-b').forEach(b => b.onclick = () => { const parts = inp.value.split(','); parts.pop(); inp.value = parts.map(x => x.trim()).filter(Boolean).join(', '); addTexts([b.dataset.t]); drawSuggest(); inp.focus(); });
 }
 let histOpen = false;
+const histCats = new Set((() => { try { return JSON.parse(localStorage.getItem('rk-hc') || '[]'); } catch(_){ return []; } })());
+const saveHC = () => { try { localStorage.setItem('rk-hc', JSON.stringify([...histCats])); } catch(_){} };
 function drawHistory(){
   const btn = $('#sh-hist'), box = $('#sh-histp'); if (!btn || !box) return;
   btn.textContent = (histOpen ? '▾ ' : '▸ ') + '📋 Dříve kupované' + (known.length ? ' (' + known.length + ')' : '');
   box.hidden = !histOpen; if (!histOpen) return;
   if (!known.length){ box.innerHTML = '<div class="free">Zatím nic. Co jednou koupíte, objeví se tady.</div>'; return; }
   const groups = new Map();
-  known.forEach(k => { const c = k.cat != null ? k.cat : catOf(k.text); const key = c == null ? 99 : SHOP_SEQ.indexOf(c); if (!groups.has(key)) groups.set(key, { c, items: [] }); groups.get(key).items.push(k); });
-  box.innerHTML = [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([key, g]) => `<div class="sh-cat">${key === 99 ? '🛍️ Ostatní' : SHOP_CATS[g.c][0] + ' ' + SHOP_CATS[g.c][1]}</div><div class="hist-g">` +
-    g.items.sort((a, b) => a.text.localeCompare(b.text, 'cs')).map(k => { const on = inList(k.text); return `<button class="hist-b ${on ? 'on' : ''}" data-t="${esc(k.text)}">${k.photo ? `<img src="${photoUrl(k.photo)}" alt="" loading="lazy">` : `<span class="hb-ph">${key === 99 ? '🛍️' : SHOP_CATS[g.c][0]}</span>`}<span class="hb-t">${esc(k.text)}</span><span class="hb-e" aria-label="Upravit">✏️</span><span class="hb-s">${on ? '✓' : '+'}</span></button>`; }).join('') + '</div>').join('') +
-    '<div class="hint" style="margin-top:10px">Klepnutím přidáte do nákupu, dalším klepnutím zase odeberete. Tužkou ✏️ upravíte název, oddělení nebo fotku. Dlouhým podržením položku z historie smažete.</div>';
+  known.forEach(k => { const c = okCat(k.cat) ? k.cat : catOf(k.text); const key = c == null ? 99 : SHOP_SEQ.indexOf(c); if (!groups.has(key)) groups.set(key, { c, items: [] }); groups.get(key).items.push(k); });
+  const nIn = shop.filter(x => !x.done).length;
+  box.innerHTML = `<div class="hist-tl"><button id="hc-all">Rozbalit vše</button><button id="hc-none">Sbalit vše</button></div>` + [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([key, g]) => { const gk = String(key === 99 ? 'x' : g.c), op = histCats.has(gk), on = g.items.filter(k => inList(k.text)).length;
+    return `<button class="sh-cat hc" data-g="${gk}"><span class="hc-a">${op ? '▾' : '▸'}</span>${key === 99 ? '🛍️ Ostatní' : SHOP_CATS[g.c][0] + ' ' + esc(SHOP_CATS[g.c][1])} <span class="hc-n">· ${g.items.length}</span>${on ? `<span class="hc-on">✓ ${on}</span>` : ''}</button>` + (op ? '<div class="hist-g">' +
+    g.items.sort((a, b) => a.text.localeCompare(b.text, 'cs')).map(k => { const on = inList(k.text); return `<button class="hist-b ${on ? 'on' : ''}" data-t="${esc(k.text)}">${k.photo ? `<img src="${photoUrl(k.photo)}" alt="" loading="lazy">` : `<span class="hb-ph">${key === 99 ? '🛍️' : SHOP_CATS[g.c][0]}</span>`}<span class="hb-t">${esc(k.text)}</span><span class="hb-e" aria-label="Upravit">✏️</span><span class="hb-s">${on ? '✓' : '+'}</span></button>`; }).join('') + '</div>' : ''); }).join('') +
+    '<div class="hint" style="margin-top:10px">Klepnutím přidáte do nákupu, dalším klepnutím zase odeberete. Tužkou ✏️ upravíte název, oddělení nebo fotku. Dlouhým podržením položku z historie smažete.</div>' +
+    `<button class="btn hist-go" id="hist-go">🛒 Přejít k nákupu${nIn ? ' (' + nIn + ')' : ''}</button>`;
+  box.querySelectorAll('.hc').forEach(b => b.onclick = () => { const g = b.dataset.g; histCats.has(g) ? histCats.delete(g) : histCats.add(g); saveHC(); drawHistory(); });
+  box.querySelector('#hc-all').onclick = () => { groups.forEach((g, key) => histCats.add(String(key === 99 ? 'x' : g.c))); saveHC(); drawHistory(); };
+  box.querySelector('#hc-none').onclick = () => { histCats.clear(); saveHC(); drawHistory(); };
+  box.querySelector('#hist-go').onclick = () => { histOpen = false; drawHistory(); const l = $('#sh-list'); if (l) window.scrollTo({ top: Math.max(0, l.getBoundingClientRect().top + window.scrollY - $('.top').getBoundingClientRect().height - 14), behavior: 'smooth' }); };
   box.querySelectorAll('.hist-b').forEach(b => {
     let t0 = 0, held = false;
     b.onpointerdown = () => { held = false; t0 = setTimeout(async () => { held = true; const k = known.find(x => x.text === b.dataset.t); if (!k) return; if (!confirm('Smazat „' + k.text + '“ z historie nákupů?')) return; known = known.filter(x => x !== k); drawHistory(); await sb.from('shopping_known').delete().eq('name', k.name); }, 700); };
     b.onpointerup = b.onpointerleave = b.onpointercancel = () => clearTimeout(t0);
     b.oncontextmenu = e => e.preventDefault();
     b.onclick = async ev => { if (held) return; const t = b.dataset.t;
-      if (ev.target.closest('.hb-e')){ const k = known.find(x => x.text === t); if (k) shopEditor({ title: 'Upravit zboží', text: k.text, cat: k.cat != null ? k.cat : catOf(k.text), onSave: (v, c) => saveKnown(k, v, c) }); return; }
+      if (ev.target.closest('.hb-e')){ const k = known.find(x => x.text === t); if (k) shopEditor({ title: 'Upravit zboží', text: k.text, cat: okCat(k.cat) ? k.cat : catOf(k.text), onSave: (v, c) => saveKnown(k, v, c) }); return; }
       if (inList(t)){ const it = shop.find(x => !x.done && knownKey(x.text) === knownKey(t)); if (!it || String(it.id).startsWith('tmp')) return; shop = shop.filter(x => x !== it); renderShopList(); shopBadge(); drawHistory(); await sb.from('shopping_items').delete().eq('id', it.id); }
       else addTexts([t]); };
   });
@@ -755,11 +817,13 @@ function renderShop(){
     <button class="sh-hist" id="sh-hist">▸ 📋 Dříve kupované</button>
     <div id="sh-histp" hidden></div>
     <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Seznam se sám řadí podle regálů v obchodě. Klepnutím věc odškrtnete, tužkou ✏️ opravíte, přidáte fotku nebo věc odeberete, za ⋮⋮ přesunete.</div>
-    <div id="sh-list"></div></div>`;
+    <div id="sh-list"></div>
+    <button class="sh-cfg" id="sh-cfg">⚙️ Upravit oddělení obchodu</button></div>`;
   const inp = $('#sh-inp');
   const add = async () => { const items = splitShop(inp.value); if (!items.length){ inp.focus(); return; } inp.value = ''; drawSuggest(); addTexts(items); };
   inp.oninput = drawSuggest;
   $('#sh-hist').onclick = () => { histOpen = !histOpen; drawHistory(); };
+  $('#sh-cfg').onclick = catsEditor;
   drawHistory();
   $('#sh-go').onclick = add;
   inp.onkeydown = e => { if (e.key === 'Enter') add(); };
