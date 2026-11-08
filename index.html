@@ -57,6 +57,27 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .seg{display:flex;background:var(--card);border-radius:14px;padding:4px;box-shadow:var(--shadow);margin-top:12px}
 .seg button{flex:1;height:36px;border-radius:10px;font-weight:700;font-size:14px;color:var(--muted)}
 .seg button.on{background:var(--ink);color:var(--bg)}
+.seg button{font-size:13px;padding:0 2px;white-space:nowrap}
+.wish{padding-bottom:40px}
+.w-occ{margin:2px 0 14px}
+.w-occ button{height:36px;font-size:13px}
+.w-occ button.on{background:var(--ink);color:var(--bg);border-color:transparent}
+.wsec{margin-bottom:22px}
+.wh{display:flex;align-items:center;gap:10px;margin:0 2px 10px;font-weight:800;font-size:17px}
+.wh i{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff;font-style:normal;font-size:14px;flex:none}
+.wh small{color:var(--muted);font-weight:700;font-size:14px}
+.w-add{width:100%;margin-bottom:10px}
+.wc{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 14px 12px;margin-bottom:8px}
+.wc-t{display:flex;gap:10px;align-items:flex-start}
+.wc-t b{flex:1;font-size:17px;line-height:1.3;word-break:break-word}
+.wc-ed{flex:none;width:36px;height:36px;border-radius:10px;background:var(--bg);font-size:16px;margin:-4px -4px 0 0}
+.wc-o{display:inline-block;margin-top:6px;font-size:12px;font-weight:800;color:var(--muted)}
+.wc-n{margin-top:6px;color:var(--muted);line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.wc-l{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:8px 12px;border-radius:12px;background:var(--bg);font-weight:700;font-size:14px;color:var(--accent);text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wc-r{display:block;width:100%;margin-top:10px;height:42px;border-radius:12px;border:1.5px dashed var(--line);font-weight:800;font-size:14px;color:var(--ink)}
+.wc-r.mine{border:none;background:var(--accent);color:var(--accent-ink)}
+.wc-r.lock{border:none;background:var(--bg);color:var(--muted);display:grid;place-items:center}
+.wc.taken{opacity:.7}
 .seg-n:not(:empty){display:inline-block;min-width:18px;height:18px;line-height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--accent);color:#fff;font-size:11px;font-weight:800;vertical-align:1px}
 body.shopping .dock, body.shopping #chips{display:none!important}
 .shop{padding-top:14px}
@@ -396,7 +417,7 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
       <button class="icon-btn" id="btn-search" aria-label="Hledat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
       <button class="avatar" id="btn-settings" aria-label="Nastavení"></button>
     </div>
-    <div class="seg"><button data-view="list" class="on">Přehled</button><button data-view="month">Měsíc</button><button data-view="shop">🛒 Nákup<span class="seg-n" id="shop-n"></span></button></div>
+    <div class="seg"><button data-view="list" class="on">Přehled</button><button data-view="month">Měsíc</button><button data-view="shop">🛒 Nákup<span class="seg-n" id="shop-n"></span></button><button data-view="wish">🎁 Přání</button></div>
     <div class="chips" id="chips"></div>
   </div>
   <main id="main"></main>
@@ -573,7 +594,7 @@ async function boot(){
     show('noaccess'); return;
   }
   show('app'); render();
-  await loadEvents(); loadCats(); loadShop(); loadKnown();
+  await loadEvents(); loadCats(); loadShop(); loadKnown(); loadWishes();
   subscribe();
 }
 function sameMail(a,b){ return a && b && a.toLowerCase()===b.toLowerCase(); }
@@ -627,10 +648,75 @@ function subscribe(){
     saveCache(); render(); if (!$('#scr-search').classList.contains('hidden')) runSearch();
   }).subscribe();
   sb.channel('shop').on('postgres_changes', { event:'*', schema:'public', table:'shopping_items' }, () => loadShop()).on('postgres_changes', { event:'*', schema:'public', table:'shopping_known' }, () => loadKnown()).on('postgres_changes', { event:'*', schema:'public', table:'shop_cats' }, () => loadCats()).subscribe();
+  sb.channel('wish').on('postgres_changes', { event:'*', schema:'public', table:'wishes' }, () => loadWishes()).subscribe();
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me){ loadEvents(); loadCats(); loadShop(); loadKnown(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me){ loadEvents(); loadCats(); loadShop(); loadKnown(); loadWishes(); } });
 
 /* ================= nákupní seznam ================= */
+let wishes = [], wOcc = 'all';
+const OCC = { vanoce: '🎄 Vánoce', narozeniny: '🎂 Narozeniny', kdykoli: '✨ Kdykoli' };
+async function loadWishes(){ const { data, error } = await sb.from('wishes').select('*').order('created_at'); if (error || !data) return; wishes = data; if (view === 'wish') renderWishes(); }
+function wLink(v){ v = (v || '').trim(); if (!v) return null; const m = v.match(/https?:\/\/[^\s<>"']+/i); if (m) return m[0].slice(0, 1000); if (/^[^\s]+\.[a-z]{2,}(\/\S*)?$/i.test(v)) return 'https://' + v.slice(0, 990); return null; }
+function wHost(l){ try { return new URL(l).hostname.replace(/^www\./, ''); } catch(_){ return 'odkaz'; } }
+function renderWishes(){
+  const main = $('#main');
+  const ok = w => wOcc === 'all' || w.occasion === wOcc || w.occasion === 'kdykoli';
+  const order = [me, ...members.filter(m => m.id !== me.id)];
+  const card = w => { const own = w.member_id === me.id, canEd = own || w.created_by === me.id, rb = w.reserved_by ? memberOf(w.reserved_by) : null;
+    const res = own ? '' : !w.reserved_by ? `<button class="wc-r" data-r="${w.id}">🎁 Koupím to já</button>` : w.reserved_by === me.id ? `<button class="wc-r mine" data-r="${w.id}">✓ Kupuji já · klepnutím zrušíte</button>` : `<span class="wc-r lock">🔒 Koupí ${esc(rb ? rb.name : 'někdo jiný')}</span>`;
+    return `<div class="wc ${!own && w.reserved_by && w.reserved_by !== me.id ? 'taken' : ''}"><div class="wc-t"><b>${esc(w.text)}</b>${canEd ? `<button class="wc-ed" data-e="${w.id}" aria-label="Upravit">✏️</button>` : ''}</div>
+      <span class="wc-o">${OCC[w.occasion] || ''}</span>${w.note ? `<div class="wc-n">${esc(w.note)}</div>` : ''}
+      ${w.link && /^https?:\/\//i.test(w.link) ? `<a class="wc-l" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(wHost(w.link))} ↗</a>` : ''}${res}</div>`; };
+  main.innerHTML = `<div class="wish"><div class="who w-occ">${[['all','Vše'],['vanoce','🎄 Vánoce'],['narozeniny','🎂 Narozeniny']].map(([k,t]) => `<button data-o="${k}" class="${wOcc === k ? 'on' : ''}">${t}</button>`).join('')}</div>` +
+    order.filter(Boolean).map(m => { const own = m.id === me.id;
+      let list = wishes.filter(w => w.member_id === m.id && ok(w));
+      if (!own) list = list.sort((a, b) => (a.reserved_by && a.reserved_by !== me.id ? 1 : 0) - (b.reserved_by && b.reserved_by !== me.id ? 1 : 0));
+      return `<section class="wsec"><div class="wh"><i style="background:${m.color}">${esc(m.name[0])}</i>${own ? 'Moje přání' : esc(m.name)} <small>${list.length || ''}</small></div>
+        ${own ? '<button class="btn w-add" id="w-add">+ Přidat přání</button>' : ''}
+        ${list.map(card).join('') || `<div class="free">${own ? 'Zatím tu nic nemáte. Napište, co byste si přáli – klidně i s odkazem na e-shop.' : 'Zatím tu nic není.'}</div>`}</section>`; }).join('') +
+    `<div class="hint">Co si kdo přeje, vidí celá rodina. Když u cizího přání dáte „Koupím to já“, ostatní uvidí, že je zamluvené, aby dárek nekoupili dvakrát. Ten, kdo si to přeje, to nevidí – překvapení zůstane.</div></div>`;
+  main.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { wOcc = b.dataset.o; renderWishes(); });
+  const add = $('#w-add'); if (add) add.onclick = () => wishEditor(null);
+  main.querySelectorAll('[data-e]').forEach(b => b.onclick = () => wishEditor(wishes.find(w => w.id === b.dataset.e)));
+  main.querySelectorAll('[data-r]').forEach(b => b.onclick = async () => { const w = wishes.find(x => x.id === b.dataset.r); if (!w) return;
+    const mine = w.reserved_by === me.id; if (w.reserved_by && !mine) return;
+    const patch = mine ? { reserved_by: null, reserved_at: null } : { reserved_by: me.id, reserved_at: new Date().toISOString() };
+    Object.assign(w, patch); renderWishes(); toast(mine ? 'Zamluvení zrušeno' : 'Zamluveno – ostatní uvidí, že to kupujete vy');
+    let q = sb.from('wishes').update(patch).eq('id', w.id); if (!mine) q = q.is('reserved_by', null);
+    const r = await q; if (r.error) toast('Uložení se nepovedlo'); loadWishes(); });
+}
+function wishEditor(w){
+  const d = w || { member_id: me.id, text: '', link: '', note: '', occasion: wOcc === 'all' ? 'kdykoli' : wOcc };
+  let mid = d.member_id, occ = d.occasion;
+  openSheet(`<h3>${w ? 'Upravit přání' : 'Nové přání'}</h3>
+    <div class="field"><span>Pro koho</span><div class="who" id="w-who">${members.map(m => `<button data-id="${m.id}" data-c="${m.color}"><span class="dot" style="background:${m.color}"></span>${esc(m.name)}</button>`).join('')}</div></div>
+    <label class="field"><span>Co bych si přál(a)</span><input class="inp" id="w-t" value="${esc(d.text)}" maxlength="200" placeholder="Např. sluchátka, kniha, poukaz…"></label>
+    <label class="field"><span>Odkaz na internet <small style="font-weight:600">(nepovinné)</small></span><input class="inp" id="w-l" value="${esc(d.link || '')}" inputmode="url" autocomplete="off" placeholder="Vložte odkaz z e-shopu"></label>
+    <div class="field"><span>Kdy</span><div class="who" id="w-occ2">${Object.entries(OCC).map(([k,t]) => `<button data-o="${k}">${t}</button>`).join('')}</div></div>
+    <label class="field"><span>Poznámka <small style="font-weight:600">(velikost, barva…)</small></span><textarea class="inp" id="w-n" maxlength="500" placeholder="Např. velikost M, modrá">${esc(d.note || '')}</textarea></label>
+    <div class="actions"><button class="btn ghost" id="w-x">Zrušit</button><button class="btn" id="w-ok">Uložit</button></div>
+    ${w ? '<button class="btn ghost" id="w-del" style="width:100%;margin-top:10px;color:var(--danger)">🗑️ Smazat přání</button>' : ''}`, sh => {
+    const paint = () => { sh.querySelectorAll('#w-who button').forEach(b => { const on = b.dataset.id === mid; b.classList.toggle('on', on); b.style.background = on ? b.dataset.c : ''; });
+      sh.querySelectorAll('#w-occ2 button').forEach(b => { const on = b.dataset.o === occ; b.classList.toggle('on', on); b.style.background = on ? 'var(--accent)' : ''; }); };
+    paint();
+    sh.querySelectorAll('#w-who button').forEach(b => b.onclick = () => { mid = b.dataset.id; paint(); });
+    sh.querySelectorAll('#w-occ2 button').forEach(b => b.onclick = () => { occ = b.dataset.o; paint(); });
+    if (!w) setTimeout(() => sh.querySelector('#w-t').focus(), 50);
+    sh.querySelector('#w-x').onclick = closeSheet;
+    const del = sh.querySelector('#w-del'); if (del) del.onclick = async () => { if (!confirm('Smazat přání „' + w.text + '“?')) return; closeSheet(); wishes = wishes.filter(x => x.id !== w.id); renderWishes(); const r = await sb.from('wishes').delete().eq('id', w.id); if (r.error) toast('Smazání se nepovedlo'); loadWishes(); };
+    sh.querySelector('#w-ok').onclick = async () => {
+      let t = sh.querySelector('#w-t').value.trim(); const lraw = sh.querySelector('#w-l').value.trim(); let link = wLink(lraw);
+      if (!link && !t){ toast('Napište, co byste si přáli'); return; }
+      if (lraw && !link){ toast('Odkaz nevypadá jako webová adresa'); return; }
+      if (!t) t = wHost(link);
+      const row = { member_id: mid, text: t.slice(0, 200), link, note: sh.querySelector('#w-n').value.trim().slice(0, 500) || null, occasion: occ };
+      closeSheet();
+      if (w){ Object.assign(w, row); renderWishes(); const r = await sb.from('wishes').update(row).eq('id', w.id); if (r.error) toast('Uložení se nepovedlo'); }
+      else { row.created_by = me.id; const r = await sb.from('wishes').insert(row).select().single(); if (r.error) toast('Uložení se nepovedlo'); else { wishes.push(r.data); toast('Přání uloženo 🎁'); } }
+      renderWishes(); loadWishes();
+    };
+  });
+}
 let shop = [];
 async function loadShop(){
   const { data, error } = await sb.from('shopping_items').select('*').order('created_at');
@@ -937,8 +1023,9 @@ function renderCore(){
   rebuildOcc();
   const av = $('#btn-settings'); av.style.background = me.color; const nn = newsList().filter(x => x.fresh).length;
   av.innerHTML = esc(me.name[0]) + (nn ? `<span class="nbadge">${nn > 9 ? '9+' : nn}</span>` : '');
-  document.body.classList.toggle('shopping', view==='shop'); shopBadge();
+  document.body.classList.toggle('shopping', view==='shop' || view==='wish'); shopBadge();
   if (view==='shop'){ $('#hdr-title').innerHTML = 'Nákup<span class="brand">Šotendář</span>'; renderShop(); return; }
+  if (view==='wish'){ $('#hdr-title').innerHTML = 'Přání<span class="brand">Šotendář</span>'; renderWishes(); return; }
   $('#hdr-title').innerHTML = hdrTitle(view==='list' ? parseKey(selDay) : monthCursor);
   renderChips();
   if (view==='list') renderList(); else renderMonth();
