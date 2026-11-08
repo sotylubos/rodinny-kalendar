@@ -663,7 +663,7 @@ function renderWishes(){
   const ok = w => wOcc === 'all' || w.occasion === wOcc || w.occasion === 'kdykoli';
   const order = [me, ...members.filter(m => m.id !== me.id)];
   const card = w => { const own = w.member_id === me.id, canEd = own || w.created_by === me.id, rb = w.reserved_by ? memberOf(w.reserved_by) : null;
-    const res = own ? '' : !w.reserved_by ? `<button class="wc-r" data-r="${w.id}">🎁 Koupím to já</button>` : w.reserved_by === me.id ? `<button class="wc-r mine" data-r="${w.id}">✓ Kupuji já · klepnutím zrušíte</button>` : `<span class="wc-r lock">🔒 Koupí ${esc(rb ? rb.name : 'někdo jiný')}</span>`;
+    const res = own ? (w.reserved_by ? `<span class="wc-r lock">🔒 Koupí ${esc(rb ? rb.name : 'někdo')}</span>` : '') : !w.reserved_by ? `<button class="wc-r" data-r="${w.id}">🎁 Koupím to já</button>` : w.reserved_by === me.id ? `<button class="wc-r mine" data-r="${w.id}">✓ Kupuji já · klepnutím zrušíte</button>` : `<span class="wc-r lock">🔒 Koupí ${esc(rb ? rb.name : 'někdo jiný')}</span>`;
     return `<div class="wc ${!own && w.reserved_by && w.reserved_by !== me.id ? 'taken' : ''}"><div class="wc-t"><b>${esc(w.text)}</b>${canEd ? `<button class="wc-ed" data-e="${w.id}" aria-label="Upravit">✏️</button>` : ''}</div>
       <span class="wc-o">${OCC[w.occasion] || ''}</span>${w.note ? `<div class="wc-n">${esc(w.note)}</div>` : ''}
       ${w.link && /^https?:\/\//i.test(w.link) ? `<a class="wc-l" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(wHost(w.link))} ↗</a>` : ''}${res}</div>`; };
@@ -674,14 +674,14 @@ function renderWishes(){
       return `<section class="wsec"><div class="wh"><i style="background:${m.color}">${esc(m.name[0])}</i>${own ? 'Moje přání' : esc(m.name)} <small>${list.length || ''}</small></div>
         ${own ? '<button class="btn w-add" id="w-add">+ Přidat přání</button>' : ''}
         ${list.map(card).join('') || `<div class="free">${own ? 'Zatím tu nic nemáte. Napište, co byste si přáli – klidně i s odkazem na e-shop.' : 'Zatím tu nic není.'}</div>`}</section>`; }).join('') +
-    `<div class="hint">Co si kdo přeje, vidí celá rodina. Když u cizího přání dáte „Koupím to já“, ostatní uvidí, že je zamluvené, aby dárek nekoupili dvakrát. Ten, kdo si to přeje, to nevidí – překvapení zůstane.</div></div>`;
+    `<div class="hint">Co si kdo přeje, vidí celá rodina. Když u cizího přání dáte „Koupím to já“, všichni uvidí, že je zamluvené, aby se dárek nekoupil dvakrát.</div></div>`;
   main.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { wOcc = b.dataset.o; renderWishes(); });
   const add = $('#w-add'); if (add) add.onclick = () => wishEditor(null);
   main.querySelectorAll('[data-e]').forEach(b => b.onclick = () => wishEditor(wishes.find(w => w.id === b.dataset.e)));
   main.querySelectorAll('[data-r]').forEach(b => b.onclick = async () => { const w = wishes.find(x => x.id === b.dataset.r); if (!w) return;
     const mine = w.reserved_by === me.id; if (w.reserved_by && !mine) return;
     const patch = mine ? { reserved_by: null, reserved_at: null } : { reserved_by: me.id, reserved_at: new Date().toISOString() };
-    Object.assign(w, patch); renderWishes(); toast(mine ? 'Zamluvení zrušeno' : 'Zamluveno – ostatní uvidí, že to kupujete vy');
+    Object.assign(w, patch); renderWishes(); toast(mine ? 'Zamluvení zrušeno' : 'Zamluveno – všichni uvidí, že to kupujete vy');
     let q = sb.from('wishes').update(patch).eq('id', w.id); if (!mine) q = q.is('reserved_by', null);
     const r = await q; if (r.error) toast('Uložení se nepovedlo'); loadWishes(); });
 }
