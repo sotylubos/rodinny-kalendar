@@ -78,6 +78,28 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .wc-r.mine{border:none;background:var(--accent);color:var(--accent-ink)}
 .wc-r.lock{border:none;background:var(--bg);color:var(--muted);display:grid;place-items:center}
 .wc.taken{opacity:.7}
+.wsec{margin-bottom:8px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.wh{width:100%;text-align:left;margin:0;padding:12px 14px}
+.wh .wh-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wh-r{font-size:12px;font-weight:800;color:var(--muted);background:var(--bg);border-radius:999px;padding:3px 8px}
+.wh-a{width:16px;text-align:center;color:var(--muted);font-size:18px}
+.wb{padding:0 10px 12px}
+.wr{border-top:1px solid var(--line)}
+.wr-h{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 4px;font-size:16px}
+.wr-h b{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wr.open .wr-h b{white-space:normal}
+.wr-o{flex:none;width:22px;text-align:center}
+.wr-x{flex:none;font-size:13px;opacity:.7}
+.wr-lk{flex:none;color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:2px 7px}
+.wr-a{flex:none;width:14px;color:var(--muted);text-align:center}
+.wr-d{padding:0 4px 12px 36px}
+.wr-e{display:inline-block;margin-top:10px;font-size:14px;font-weight:700;color:var(--muted);padding:6px 0}
+.wb-a{display:flex;gap:8px;margin-top:10px}
+.wb-a .btn{flex:1;height:44px;font-size:14px}
+.wb-a .wb-p{flex:none;width:48px;padding:0}
+.p-cols{display:flex;flex-wrap:wrap;gap:10px}
+.p-cols button{width:36px;height:36px;border-radius:50%}
+.p-cols button.on{outline:3px solid var(--ink);outline-offset:2px}
 .seg-n:not(:empty){display:inline-block;min-width:18px;height:18px;line-height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--accent);color:#fff;font-size:11px;font-weight:800;vertical-align:1px}
 body.shopping .dock, body.shopping #chips{display:none!important}
 .shop{padding-top:14px}
@@ -648,35 +670,44 @@ function subscribe(){
     saveCache(); render(); if (!$('#scr-search').classList.contains('hidden')) runSearch();
   }).subscribe();
   sb.channel('shop').on('postgres_changes', { event:'*', schema:'public', table:'shopping_items' }, () => loadShop()).on('postgres_changes', { event:'*', schema:'public', table:'shopping_known' }, () => loadKnown()).on('postgres_changes', { event:'*', schema:'public', table:'shop_cats' }, () => loadCats()).subscribe();
-  sb.channel('wish').on('postgres_changes', { event:'*', schema:'public', table:'wishes' }, () => loadWishes()).subscribe();
+  sb.channel('wish').on('postgres_changes', { event:'*', schema:'public', table:'wishes' }, () => loadWishes()).on('postgres_changes', { event:'*', schema:'public', table:'wish_people' }, () => loadWishes()).subscribe();
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me){ loadEvents(); loadCats(); loadShop(); loadKnown(); loadWishes(); } });
 
 /* ================= nákupní seznam ================= */
-let wishes = [], wOcc = 'all';
+let wishes = [], wPeople = [], wOcc = 'all', wDet = null;
+const wOpen = new Set((() => { try { return JSON.parse(localStorage.getItem('rk-wo') || '[]'); } catch(_){ return []; } })());
+const saveWO = () => { try { localStorage.setItem('rk-wo', JSON.stringify([...wOpen])); } catch(_){} };
 const OCC = { vanoce: '🎄 Vánoce', narozeniny: '🎂 Narozeniny', kdykoli: '✨ Kdykoli' };
-async function loadWishes(){ const { data, error } = await sb.from('wishes').select('*').order('created_at'); if (error || !data) return; wishes = data; if (view === 'wish') renderWishes(); }
+async function loadWishes(){ const [a, b] = await Promise.all([sb.from('wishes').select('*').order('created_at'), sb.from('wish_people').select('*').order('created_at')]); if (a.error || !a.data) return; wishes = a.data; if (b.data && !b.error) wPeople = b.data; if (view === 'wish') renderWishes(); }
 function wLink(v){ v = (v || '').trim(); if (!v) return null; const m = v.match(/https?:\/\/[^\s<>"']+/i); if (m) return m[0].slice(0, 1000); if (/^[^\s]+\.[a-z]{2,}(\/\S*)?$/i.test(v)) return 'https://' + v.slice(0, 990); return null; }
 function wHost(l){ try { return new URL(l).hostname.replace(/^www\./, ''); } catch(_){ return 'odkaz'; } }
+function wKey(w){ return w.person_id ? 'p:' + w.person_id : 'm:' + w.member_id; }
+function wWho(k){ const [t, id] = k.split(':'); const x = t === 'p' ? wPeople.find(p => p.id === id) : memberOf(id); return x ? { name: x.name, color: x.color } : null; }
 function renderWishes(){
   const main = $('#main');
   const ok = w => wOcc === 'all' || w.occasion === wOcc || w.occasion === 'kdykoli';
-  const order = [me, ...members.filter(m => m.id !== me.id)];
-  const card = w => { const own = w.member_id === me.id, canEd = own || w.created_by === me.id, rb = w.reserved_by ? memberOf(w.reserved_by) : null;
-    const res = own ? (w.reserved_by ? `<span class="wc-r lock">🔒 Koupí ${esc(rb ? rb.name : 'někdo')}</span>` : '') : !w.reserved_by ? `<button class="wc-r" data-r="${w.id}">🎁 Koupím to já</button>` : w.reserved_by === me.id ? `<button class="wc-r mine" data-r="${w.id}">✓ Kupuji já · klepnutím zrušíte</button>` : `<span class="wc-r lock">🔒 Koupí ${esc(rb ? rb.name : 'někdo jiný')}</span>`;
-    return `<div class="wc ${!own && w.reserved_by && w.reserved_by !== me.id ? 'taken' : ''}"><div class="wc-t"><b>${esc(w.text)}</b>${canEd ? `<button class="wc-ed" data-e="${w.id}" aria-label="Upravit">✏️</button>` : ''}</div>
-      <span class="wc-o">${OCC[w.occasion] || ''}</span>${w.note ? `<div class="wc-n">${esc(w.note)}</div>` : ''}
-      ${w.link && /^https?:\/\//i.test(w.link) ? `<a class="wc-l" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(wHost(w.link))} ↗</a>` : ''}${res}</div>`; };
+  const OI = { vanoce: '🎄', narozeniny: '🎂', kdykoli: '✨' };
+  const secs = [['m:' + me.id, me.name, me.color, true], ...members.filter(m => m.id !== me.id).map(m => ['m:' + m.id, m.name, m.color, false]), ...wPeople.map(p => ['p:' + p.id, p.name, p.color, false])];
+  const row = w => { const own = w.member_id === me.id, canEd = own || !!w.person_id || w.created_by === me.id, rb = w.reserved_by ? memberOf(w.reserved_by) : null, op = wDet === w.id;
+    const res = !w.reserved_by ? (own ? '' : `<button class="wc-r" data-r="${w.id}">🎁 Koupím to já</button>`) : w.reserved_by === me.id ? `<button class="wc-r mine" data-r="${w.id}">✓ Kupuji já · klepnutím zrušíte</button>` : `<span class="wc-r lock">🔒 Koupí ${esc(rb ? rb.name : 'někdo')}</span>`;
+    return `<div class="wr ${op ? 'open' : ''}"><button class="wr-h" data-w="${w.id}"><span class="wr-o">${OI[w.occasion] || ''}</span><b>${esc(w.text)}</b>${w.link ? '<span class="wr-x">🔗</span>' : ''}${w.reserved_by ? `<span class="wr-lk" style="background:${rb ? rb.color : 'var(--muted)'}">🔒 ${esc(rb ? rb.name[0] : '?')}</span>` : ''}<span class="wr-a">${op ? '▾' : '›'}</span></button>` +
+      (op ? `<div class="wr-d"><span class="wc-o">${OCC[w.occasion] || ''}</span>${w.note ? `<div class="wc-n">${esc(w.note)}</div>` : ''}
+        ${w.link && /^https?:\/\//i.test(w.link) ? `<a class="wc-l" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(wHost(w.link))} ↗</a>` : ''}${res}
+        ${canEd ? `<button class="wr-e" data-e="${w.id}">✏️ Upravit</button>` : ''}</div>` : '') + '</div>'; };
   main.innerHTML = `<div class="wish"><div class="who w-occ">${[['all','Vše'],['vanoce','🎄 Vánoce'],['narozeniny','🎂 Narozeniny']].map(([k,t]) => `<button data-o="${k}" class="${wOcc === k ? 'on' : ''}">${t}</button>`).join('')}</div>` +
-    order.filter(Boolean).map(m => { const own = m.id === me.id;
-      let list = wishes.filter(w => w.member_id === m.id && ok(w));
-      if (!own) list = list.sort((a, b) => (a.reserved_by && a.reserved_by !== me.id ? 1 : 0) - (b.reserved_by && b.reserved_by !== me.id ? 1 : 0));
-      return `<section class="wsec"><div class="wh"><i style="background:${m.color}">${esc(m.name[0])}</i>${own ? 'Moje přání' : esc(m.name)} <small>${list.length || ''}</small></div>
-        ${own ? '<button class="btn w-add" id="w-add">+ Přidat přání</button>' : ''}
-        ${list.map(card).join('') || `<div class="free">${own ? 'Zatím tu nic nemáte. Napište, co byste si přáli – klidně i s odkazem na e-shop.' : 'Zatím tu nic není.'}</div>`}</section>`; }).join('') +
-    `<div class="hint">Co si kdo přeje, vidí celá rodina. Když u cizího přání dáte „Koupím to já“, všichni uvidí, že je zamluvené, aby se dárek nekoupil dvakrát.</div></div>`;
+    secs.map(([k, name, color, own]) => { const list = wishes.filter(w => wKey(w) === k && ok(w)), op = wOpen.has(k), nr = list.filter(w => w.reserved_by).length, isP = k[0] === 'p';
+      return `<section class="wsec ${op ? 'open' : ''}"><button class="wh" data-s="${k}"><i style="background:${color}">${esc(name[0])}</i><span class="wh-n">${own ? 'Moje přání' : esc(name)}</span><small>${list.length || ''}</small>${nr ? `<span class="wh-r">🔒 ${nr}</span>` : ''}<span class="wh-a">${op ? '▾' : '›'}</span></button>` +
+        (op ? `<div class="wb">${list.map(row).join('') || `<div class="free">${own ? 'Zatím tu nic nemáte.' : isP ? 'Zatím žádný nápad na dárek.' : 'Zatím tu nic není.'}</div>`}
+          <div class="wb-a"><button class="btn ghost" data-add="${k}">+ ${isP ? 'Přidat nápad na dárek' : 'Přidat přání'}</button>${isP ? `<button class="btn ghost wb-p" data-pe="${k.slice(2)}" aria-label="Upravit">✏️</button>` : ''}</div></div>` : '') + '</section>'; }).join('') +
+    `<button class="sh-cfg" id="w-person" style="margin-top:6px">+ Přidat člověka (babička, kamarád…)</button>
+    <div class="hint">Klepnutím na jméno se rozbalí přání, klepnutím na přání jeho podrobnosti. Když dáte „Koupím to já“, všichni uvidí, že je dárek zamluvený, aby se nekoupil dvakrát.</div></div>`;
   main.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { wOcc = b.dataset.o; renderWishes(); });
-  const add = $('#w-add'); if (add) add.onclick = () => wishEditor(null);
+  main.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { const k = b.dataset.s; wOpen.has(k) ? wOpen.delete(k) : wOpen.add(k); saveWO(); renderWishes(); });
+  main.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { wDet = wDet === b.dataset.w ? null : b.dataset.w; renderWishes(); });
+  main.querySelectorAll('[data-add]').forEach(b => b.onclick = () => wishEditor(null, b.dataset.add));
+  main.querySelectorAll('[data-pe]').forEach(b => b.onclick = () => personEditor(wPeople.find(p => p.id === b.dataset.pe)));
+  $('#w-person').onclick = () => personEditor(null);
   main.querySelectorAll('[data-e]').forEach(b => b.onclick = () => wishEditor(wishes.find(w => w.id === b.dataset.e)));
   main.querySelectorAll('[data-r]').forEach(b => b.onclick = async () => { const w = wishes.find(x => x.id === b.dataset.r); if (!w) return;
     const mine = w.reserved_by === me.id; if (w.reserved_by && !mine) return;
@@ -685,21 +716,42 @@ function renderWishes(){
     let q = sb.from('wishes').update(patch).eq('id', w.id); if (!mine) q = q.is('reserved_by', null);
     const r = await q; if (r.error) toast('Uložení se nepovedlo'); loadWishes(); });
 }
-function wishEditor(w){
-  const d = w || { member_id: me.id, text: '', link: '', note: '', occasion: wOcc === 'all' ? 'kdykoli' : wOcc };
-  let mid = d.member_id, occ = d.occasion;
+function personEditor(p){
+  const COLS = ['#8a8f98','#c0392b','#d35400','#b7950b','#27ae60','#16a085','#2980b9','#8e44ad','#c2185b','#6d4c41'];
+  let col = p ? p.color : COLS[Math.floor(Math.random() * COLS.length)];
+  openSheet(`<h3>${p ? 'Upravit člověka' : 'Přidat člověka'}</h3>
+    <div class="hint" style="margin-top:0">Pro koho budete chtít kupovat dárky – babička, kamarád, kmotr… Nemusí mít aplikaci, přání nebo nápady za něj zapíšete vy.</div>
+    <label class="field"><span>Jméno</span><input class="inp" id="p-n" value="${esc(p ? p.name : '')}" maxlength="40" placeholder="Např. Babička Jana"></label>
+    <div class="field"><span>Barva</span><div class="p-cols">${COLS.map(c => `<button data-c="${c}" style="background:${c}" aria-label="Barva"></button>`).join('')}</div></div>
+    <div class="actions" style="margin-top:14px"><button class="btn ghost" id="p-x">Zrušit</button><button class="btn" id="p-ok">Uložit</button></div>
+    ${p ? '<button class="btn ghost" id="p-del" style="width:100%;margin-top:10px;color:var(--danger)">🗑️ Odebrat i s jeho přáními</button>' : ''}`, sh => {
+    const paint = () => sh.querySelectorAll('.p-cols button').forEach(b => b.classList.toggle('on', b.dataset.c === col));
+    paint(); sh.querySelectorAll('.p-cols button').forEach(b => b.onclick = () => { col = b.dataset.c; paint(); });
+    if (!p) setTimeout(() => sh.querySelector('#p-n').focus(), 50);
+    sh.querySelector('#p-x').onclick = closeSheet;
+    const del = sh.querySelector('#p-del'); if (del) del.onclick = async () => { if (!confirm('Odebrat „' + p.name + '“ i se všemi jeho přáními?')) return; closeSheet(); wPeople = wPeople.filter(x => x.id !== p.id); wishes = wishes.filter(w => w.person_id !== p.id); renderWishes(); const r = await sb.from('wish_people').delete().eq('id', p.id); if (r.error) toast('Smazání se nepovedlo'); loadWishes(); };
+    sh.querySelector('#p-ok').onclick = async () => { const n = sh.querySelector('#p-n').value.trim().slice(0, 40); if (!n){ toast('Napište jméno'); return; } closeSheet();
+      if (p){ Object.assign(p, { name: n, color: col }); renderWishes(); const r = await sb.from('wish_people').update({ name: n, color: col }).eq('id', p.id); if (r.error) toast('Uložení se nepovedlo'); }
+      else { const r = await sb.from('wish_people').insert({ name: n, color: col, created_by: me.id }).select().single(); if (r.error){ toast('Uložení se nepovedlo'); return; } wPeople.push(r.data); wOpen.add('p:' + r.data.id); saveWO(); toast(n + ' přidán(a) do Přání'); }
+      renderWishes(); loadWishes(); };
+  });
+}
+function wishEditor(w, key){
+  const d = w || { text: '', link: '', note: '', occasion: wOcc === 'all' ? 'kdykoli' : wOcc };
+  let tk = w ? wKey(w) : (key || 'm:' + me.id), occ = d.occasion;
+  const targets = [...members.map(m => ['m:' + m.id, m.name, m.color]), ...wPeople.map(p => ['p:' + p.id, p.name, p.color])];
   openSheet(`<h3>${w ? 'Upravit přání' : 'Nové přání'}</h3>
-    <div class="field"><span>Pro koho</span><div class="who" id="w-who">${members.map(m => `<button data-id="${m.id}" data-c="${m.color}"><span class="dot" style="background:${m.color}"></span>${esc(m.name)}</button>`).join('')}</div></div>
+    <div class="field"><span>Pro koho</span><div class="who" id="w-who">${targets.map(([k, n, c]) => `<button data-id="${k}" data-c="${c}"><span class="dot" style="background:${c}"></span>${esc(n)}</button>`).join('')}</div></div>
     <label class="field"><span>Co bych si přál(a)</span><input class="inp" id="w-t" value="${esc(d.text)}" maxlength="200" placeholder="Např. sluchátka, kniha, poukaz…"></label>
     <label class="field"><span>Odkaz na internet <small style="font-weight:600">(nepovinné)</small></span><input class="inp" id="w-l" value="${esc(d.link || '')}" inputmode="url" autocomplete="off" placeholder="Vložte odkaz z e-shopu"></label>
     <div class="field"><span>Kdy</span><div class="who" id="w-occ2">${Object.entries(OCC).map(([k,t]) => `<button data-o="${k}">${t}</button>`).join('')}</div></div>
     <label class="field"><span>Poznámka <small style="font-weight:600">(velikost, barva…)</small></span><textarea class="inp" id="w-n" maxlength="500" placeholder="Např. velikost M, modrá">${esc(d.note || '')}</textarea></label>
     <div class="actions"><button class="btn ghost" id="w-x">Zrušit</button><button class="btn" id="w-ok">Uložit</button></div>
     ${w ? '<button class="btn ghost" id="w-del" style="width:100%;margin-top:10px;color:var(--danger)">🗑️ Smazat přání</button>' : ''}`, sh => {
-    const paint = () => { sh.querySelectorAll('#w-who button').forEach(b => { const on = b.dataset.id === mid; b.classList.toggle('on', on); b.style.background = on ? b.dataset.c : ''; });
+    const paint = () => { sh.querySelectorAll('#w-who button').forEach(b => { const on = b.dataset.id === tk; b.classList.toggle('on', on); b.style.background = on ? b.dataset.c : ''; });
       sh.querySelectorAll('#w-occ2 button').forEach(b => { const on = b.dataset.o === occ; b.classList.toggle('on', on); b.style.background = on ? 'var(--accent)' : ''; }); };
     paint();
-    sh.querySelectorAll('#w-who button').forEach(b => b.onclick = () => { mid = b.dataset.id; paint(); });
+    sh.querySelectorAll('#w-who button').forEach(b => b.onclick = () => { tk = b.dataset.id; paint(); });
     sh.querySelectorAll('#w-occ2 button').forEach(b => b.onclick = () => { occ = b.dataset.o; paint(); });
     if (!w) setTimeout(() => sh.querySelector('#w-t').focus(), 50);
     sh.querySelector('#w-x').onclick = closeSheet;
@@ -709,8 +761,9 @@ function wishEditor(w){
       if (!link && !t){ toast('Napište, co byste si přáli'); return; }
       if (lraw && !link){ toast('Odkaz nevypadá jako webová adresa'); return; }
       if (!t) t = wHost(link);
-      const row = { member_id: mid, text: t.slice(0, 200), link, note: sh.querySelector('#w-n').value.trim().slice(0, 500) || null, occasion: occ };
-      closeSheet();
+      const [tt, tid] = tk.split(':');
+      const row = { member_id: tt === 'm' ? tid : null, person_id: tt === 'p' ? tid : null, text: t.slice(0, 200), link, note: sh.querySelector('#w-n').value.trim().slice(0, 500) || null, occasion: occ };
+      closeSheet(); wOpen.add(tk); saveWO();
       if (w){ Object.assign(w, row); renderWishes(); const r = await sb.from('wishes').update(row).eq('id', w.id); if (r.error) toast('Uložení se nepovedlo'); }
       else { row.created_by = me.id; const r = await sb.from('wishes').insert(row).select().single(); if (r.error) toast('Uložení se nepovedlo'); else { wishes.push(r.data); toast('Přání uloženo 🎁'); } }
       renderWishes(); loadWishes();
