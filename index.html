@@ -100,6 +100,8 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .p-cols{display:flex;flex-wrap:wrap;gap:10px}
 .p-cols button{width:36px;height:36px;border-radius:50%}
 .p-cols button.on{outline:3px solid var(--ink);outline-offset:2px}
+#w-vis button.off{opacity:.5;text-decoration:line-through}
+.w-sec{margin-top:6px;font-weight:700;color:var(--muted);font-size:14px}
 .seg-n:not(:empty){display:inline-block;min-width:18px;height:18px;line-height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--accent);color:#fff;font-size:11px;font-weight:800;vertical-align:1px}
 body.shopping .dock, body.shopping #chips{display:none!important}
 .shop{padding-top:14px}
@@ -691,8 +693,8 @@ function renderWishes(){
   const secs = [['m:' + me.id, me.name, me.color, true], ...members.filter(m => m.id !== me.id).map(m => ['m:' + m.id, m.name, m.color, false]), ...wPeople.map(p => ['p:' + p.id, p.name, p.color, false])];
   const row = w => { const own = w.member_id === me.id, canEd = own || !!w.person_id || w.created_by === me.id, rb = w.reserved_by ? memberOf(w.reserved_by) : null, op = wDet === w.id;
     const res = !w.reserved_by ? (own ? '' : `<button class="wc-r" data-r="${w.id}">🎁 Koupím to já</button>`) : w.reserved_by === me.id ? `<button class="wc-r mine" data-r="${w.id}">✓ Kupuji já · klepnutím zrušíte</button>` : `<span class="wc-r lock">🔒 Koupí ${esc(rb ? rb.name : 'někdo')}</span>`;
-    return `<div class="wr ${op ? 'open' : ''}"><button class="wr-h" data-w="${w.id}"><span class="wr-o">${OI[w.occasion] || ''}</span><b>${esc(w.text)}</b>${w.link ? '<span class="wr-x">🔗</span>' : ''}${w.reserved_by ? `<span class="wr-lk" style="background:${rb ? rb.color : 'var(--muted)'}">🔒 ${esc(rb ? rb.name[0] : '?')}</span>` : ''}<span class="wr-a">${op ? '▾' : '›'}</span></button>` +
-      (op ? `<div class="wr-d"><span class="wc-o">${OCC[w.occasion] || ''}</span>${w.note ? `<div class="wc-n">${esc(w.note)}</div>` : ''}
+    return `<div class="wr ${op ? 'open' : ''}"><button class="wr-h" data-w="${w.id}"><span class="wr-o">${OI[w.occasion] || ''}</span><b>${esc(w.text)}</b>${w.link ? '<span class="wr-x">🔗</span>' : ''}${(w.hidden_from || []).length ? '<span class="wr-x" title="Tajné">🤫</span>' : ''}${w.reserved_by ? `<span class="wr-lk" style="background:${rb ? rb.color : 'var(--muted)'}">🔒 ${esc(rb ? rb.name[0] : '?')}</span>` : ''}<span class="wr-a">${op ? '▾' : '›'}</span></button>` +
+      (op ? `<div class="wr-d"><span class="wc-o">${OCC[w.occasion] || ''}</span>${(w.hidden_from || []).length ? `<div class="w-sec">🤫 Neuvidí: ${w.hidden_from.map(id => { const m = memberOf(id); return m ? esc(m.name) : ''; }).filter(Boolean).join(', ')}</div>` : ''}${w.note ? `<div class="wc-n">${esc(w.note)}</div>` : ''}
         ${w.link && /^https?:\/\//i.test(w.link) ? `<a class="wc-l" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(wHost(w.link))} ↗</a>` : ''}${res}
         ${canEd ? `<button class="wr-e" data-e="${w.id}">✏️ Upravit</button>` : ''}</div>` : '') + '</div>'; };
   main.innerHTML = `<div class="wish"><div class="who w-occ">${[['all','Vše'],['vanoce','🎄 Vánoce'],['narozeniny','🎂 Narozeniny']].map(([k,t]) => `<button data-o="${k}" class="${wOcc === k ? 'on' : ''}">${t}</button>`).join('')}</div>` +
@@ -701,7 +703,7 @@ function renderWishes(){
         (op ? `<div class="wb">${list.map(row).join('') || `<div class="free">${own ? 'Zatím tu nic nemáte.' : isP ? 'Zatím žádný nápad na dárek.' : 'Zatím tu nic není.'}</div>`}
           <div class="wb-a"><button class="btn ghost" data-add="${k}">+ ${isP ? 'Přidat nápad na dárek' : 'Přidat přání'}</button>${isP ? `<button class="btn ghost wb-p" data-pe="${k.slice(2)}" aria-label="Upravit">✏️</button>` : ''}</div></div>` : '') + '</section>'; }).join('') +
     `<button class="sh-cfg" id="w-person" style="margin-top:6px">+ Přidat člověka (babička, kamarád…)</button>
-    <div class="hint">Klepnutím na jméno se rozbalí přání, klepnutím na přání jeho podrobnosti. Když dáte „Koupím to já“, všichni uvidí, že je dárek zamluvený, aby se nekoupil dvakrát.</div></div>`;
+    <div class="hint">Klepnutím na jméno se rozbalí přání, klepnutím na přání jeho podrobnosti. Když dáte „Koupím to já“, všichni uvidí, že je dárek zamluvený, aby se nekoupil dvakrát. Nápad na dárek pro někoho z rodiny se mu automaticky skryje (🤫) – v úpravě u „Kdo to uvidí“ si vyberete, kdo ho uvidí a kdo ne.</div></div>`;
   main.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { wOcc = b.dataset.o; renderWishes(); });
   main.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { const k = b.dataset.s; wOpen.has(k) ? wOpen.delete(k) : wOpen.add(k); saveWO(); renderWishes(); });
   main.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { wDet = wDet === b.dataset.w ? null : b.dataset.w; renderWishes(); });
@@ -739,6 +741,8 @@ function personEditor(p){
 function wishEditor(w, key){
   const d = w || { text: '', link: '', note: '', occasion: wOcc === 'all' ? 'kdykoli' : wOcc };
   let tk = w ? wKey(w) : (key || 'm:' + me.id), occ = d.occasion;
+  const defHid = () => { const [tt, tid] = tk.split(':'); return tt === 'm' && tid !== me.id ? [tid] : []; };
+  let touched = !!w, hid = w ? [...(w.hidden_from || [])] : defHid();
   const targets = [...members.map(m => ['m:' + m.id, m.name, m.color]), ...wPeople.map(p => ['p:' + p.id, p.name, p.color])];
   openSheet(`<h3>${w ? 'Upravit přání' : 'Nové přání'}</h3>
     <div class="field"><span>Pro koho</span><div class="who" id="w-who">${targets.map(([k, n, c]) => `<button data-id="${k}" data-c="${c}"><span class="dot" style="background:${c}"></span>${esc(n)}</button>`).join('')}</div></div>
@@ -746,12 +750,16 @@ function wishEditor(w, key){
     <label class="field"><span>Odkaz na internet <small style="font-weight:600">(nepovinné)</small></span><input class="inp" id="w-l" value="${esc(d.link || '')}" inputmode="url" autocomplete="off" placeholder="Vložte odkaz z e-shopu"></label>
     <div class="field"><span>Kdy</span><div class="who" id="w-occ2">${Object.entries(OCC).map(([k,t]) => `<button data-o="${k}">${t}</button>`).join('')}</div></div>
     <label class="field"><span>Poznámka <small style="font-weight:600">(velikost, barva…)</small></span><textarea class="inp" id="w-n" maxlength="500" placeholder="Např. velikost M, modrá">${esc(d.note || '')}</textarea></label>
+    <div class="field"><span>Kdo to uvidí <small style="font-weight:600">(klepnutím skryjete)</small></span><div class="who" id="w-vis">${members.filter(m => m.id !== me.id).map(m => `<button data-v="${m.id}" data-c="${m.color}"><span class="dot" style="background:${m.color}"></span>${esc(m.name)}</button>`).join('')}</div><div class="w-sec" id="w-vh"></div></div>
     <div class="actions"><button class="btn ghost" id="w-x">Zrušit</button><button class="btn" id="w-ok">Uložit</button></div>
     ${w ? '<button class="btn ghost" id="w-del" style="width:100%;margin-top:10px;color:var(--danger)">🗑️ Smazat přání</button>' : ''}`, sh => {
-    const paint = () => { sh.querySelectorAll('#w-who button').forEach(b => { const on = b.dataset.id === tk; b.classList.toggle('on', on); b.style.background = on ? b.dataset.c : ''; });
+    const paintV = () => { sh.querySelectorAll('#w-vis button').forEach(b => { const off = hid.includes(b.dataset.v); b.classList.toggle('off', off); b.classList.toggle('on', !off); b.style.background = off ? '' : b.dataset.c; });
+      sh.querySelector('#w-vh').textContent = hid.length ? '🤫 Tajné – neuvidí: ' + hid.map(id => (memberOf(id) || {}).name).filter(Boolean).join(', ') : 'Uvidí všichni.'; };
+    sh.querySelectorAll('#w-vis button').forEach(b => b.onclick = () => { touched = true; const id = b.dataset.v; hid = hid.includes(id) ? hid.filter(x => x !== id) : [...hid, id]; paintV(); });
+    const paint = () => { paintV(); sh.querySelectorAll('#w-who button').forEach(b => { const on = b.dataset.id === tk; b.classList.toggle('on', on); b.style.background = on ? b.dataset.c : ''; });
       sh.querySelectorAll('#w-occ2 button').forEach(b => { const on = b.dataset.o === occ; b.classList.toggle('on', on); b.style.background = on ? 'var(--accent)' : ''; }); };
     paint();
-    sh.querySelectorAll('#w-who button').forEach(b => b.onclick = () => { tk = b.dataset.id; paint(); });
+    sh.querySelectorAll('#w-who button').forEach(b => b.onclick = () => { tk = b.dataset.id; if (!touched) hid = defHid(); paint(); });
     sh.querySelectorAll('#w-occ2 button').forEach(b => b.onclick = () => { occ = b.dataset.o; paint(); });
     if (!w) setTimeout(() => sh.querySelector('#w-t').focus(), 50);
     sh.querySelector('#w-x').onclick = closeSheet;
@@ -762,7 +770,7 @@ function wishEditor(w, key){
       if (lraw && !link){ toast('Odkaz nevypadá jako webová adresa'); return; }
       if (!t) t = wHost(link);
       const [tt, tid] = tk.split(':');
-      const row = { member_id: tt === 'm' ? tid : null, person_id: tt === 'p' ? tid : null, text: t.slice(0, 200), link, note: sh.querySelector('#w-n').value.trim().slice(0, 500) || null, occasion: occ };
+      const row = { member_id: tt === 'm' ? tid : null, person_id: tt === 'p' ? tid : null, text: t.slice(0, 200), link, note: sh.querySelector('#w-n').value.trim().slice(0, 500) || null, occasion: occ, hidden_from: hid.filter(id => id !== me.id) };
       closeSheet(); wOpen.add(tk); saveWO();
       if (w){ Object.assign(w, row); renderWishes(); const r = await sb.from('wishes').update(row).eq('id', w.id); if (r.error) toast('Uložení se nepovedlo'); }
       else { row.created_by = me.id; const r = await sb.from('wishes').insert(row).select().single(); if (r.error) toast('Uložení se nepovedlo'); else { wishes.push(r.data); toast('Přání uloženo 🎁'); } }
