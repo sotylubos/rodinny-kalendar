@@ -58,6 +58,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .seg button{flex:1;height:36px;border-radius:10px;font-weight:700;font-size:14px;color:var(--muted)}
 .seg button.on{background:var(--ink);color:var(--bg)}
 .seg button{font-size:13px;padding:0 2px;white-space:nowrap}
+@media (max-width:400px){.seg button{font-size:12px;padding:0 1px;letter-spacing:-.01em}.seg-n:not(:empty){margin-left:3px;padding:0 4px;min-width:16px;height:16px;line-height:16px}}
 .wish{padding-bottom:40px}
 .w-occ{margin:2px 0 14px}
 .w-occ button{height:36px;font-size:13px}
@@ -102,6 +103,37 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .p-cols button.on{outline:3px solid var(--ink);outline-offset:2px}
 #w-vis button.off{opacity:.5;text-decoration:line-through}
 .w-sec{margin-top:6px;font-weight:700;color:var(--muted);font-size:14px}
+.polls{padding-bottom:40px}
+.pl-new{width:100%;margin:2px 0 14px;height:48px}
+.pl{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+.pl.closed{opacity:.75}
+.pl-h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--muted)}
+.pl-h i,.pa i{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-style:normal;font-size:12px;font-weight:800;flex:none}
+.pl-h span{flex:1;min-width:0}
+.pl-m{flex:none;width:34px;height:30px;border-radius:10px;background:var(--bg);font-size:18px;font-weight:800;color:var(--muted)}
+.pl-q{margin:8px 0 4px;font-size:18px;font-weight:800;line-height:1.3;white-space:pre-wrap;word-break:break-word}
+.pl-sum{display:flex;gap:16px;margin-top:8px;font-size:14px;font-weight:700;color:var(--muted)}
+.pl-sum b{color:var(--ink)}
+.pl-bar{height:8px;border-radius:4px;background:#e0645a;margin-top:6px;overflow:hidden}
+.pl-bar i{display:block;height:100%;background:#2fa36b}
+.pl-as{margin-top:10px;border-top:1px solid var(--line)}
+.pa{display:flex;gap:10px;padding:9px 0 0;align-items:flex-start}
+.pa>div{flex:1;min-width:0;font-size:15px}
+.pa-v{display:inline-block;margin-left:8px;font-size:12px;font-weight:800;border-radius:999px;padding:2px 8px;color:#fff}
+.pa-v.ano{background:#2fa36b}.pa-v.ne{background:#e0645a}
+.pa-ed{flex:none;width:34px;height:30px;border-radius:10px;background:var(--bg);font-size:14px}
+.pa-c{margin-top:3px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+.pl-w{margin-top:10px;font-size:13px;font-weight:700;color:var(--muted)}
+.pl-me{margin-top:12px}
+.pl-yn{display:flex;gap:8px;margin-bottom:8px}
+.pl-yn button{flex:1;height:44px;border-radius:12px;border:1.5px solid var(--line);font-weight:800;font-size:15px}
+.pl-yn button.on{color:#fff;border-color:transparent}
+.pl-yn button.on.ano{background:#2fa36b}.pl-yn button.on.ne{background:#e0645a}
+.pl-txt{display:flex;gap:8px;align-items:flex-end}
+.pl-txt .inp{flex:1;min-width:0;height:46px;padding:11px 12px;font-size:15px;line-height:1.35}
+.pa-send{flex:none;width:46px;height:46px;padding:0;border-radius:12px;font-size:18px}
+.pl-sep{margin:20px 4px 10px;font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.w-mp{display:inline-block;color:#fff;font-size:12px;font-weight:800;border-radius:999px;padding:2px 8px;margin:2px 2px 0 0}
 .seg-n:not(:empty){display:inline-block;min-width:18px;height:18px;line-height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--accent);color:#fff;font-size:11px;font-weight:800;vertical-align:1px}
 body.shopping .dock, body.shopping #chips{display:none!important}
 .shop{padding-top:14px}
@@ -441,7 +473,7 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
       <button class="icon-btn" id="btn-search" aria-label="Hledat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
       <button class="avatar" id="btn-settings" aria-label="Nastavení"></button>
     </div>
-    <div class="seg"><button data-view="list" class="on">Přehled</button><button data-view="month">Měsíc</button><button data-view="shop">🛒 Nákup<span class="seg-n" id="shop-n"></span></button><button data-view="wish">🎁 Přání</button></div>
+    <div class="seg"><button data-view="list" class="on">Přehled</button><button data-view="month">Měsíc</button><button data-view="shop">🛒 Nákup<span class="seg-n" id="shop-n"></span></button><button data-view="wish">🎁 Přání</button><button data-view="poll">🗳️ Ankety<span class="seg-n" id="poll-n"></span></button></div>
     <div class="chips" id="chips"></div>
   </div>
   <main id="main"></main>
@@ -618,7 +650,8 @@ async function boot(){
     show('noaccess'); return;
   }
   show('app'); render();
-  await loadEvents(); loadCats(); loadShop(); loadKnown(); loadWishes();
+  if (location.hash === '#ankety'){ history.replaceState(null, '', location.pathname); setView('poll'); }
+  await loadEvents(); loadCats(); loadShop(); loadKnown(); loadWishes(); loadPolls();
   subscribe();
 }
 function sameMail(a,b){ return a && b && a.toLowerCase()===b.toLowerCase(); }
@@ -673,8 +706,9 @@ function subscribe(){
   }).subscribe();
   sb.channel('shop').on('postgres_changes', { event:'*', schema:'public', table:'shopping_items' }, () => loadShop()).on('postgres_changes', { event:'*', schema:'public', table:'shopping_known' }, () => loadKnown()).on('postgres_changes', { event:'*', schema:'public', table:'shop_cats' }, () => loadCats()).subscribe();
   sb.channel('wish').on('postgres_changes', { event:'*', schema:'public', table:'wishes' }, () => loadWishes()).on('postgres_changes', { event:'*', schema:'public', table:'wish_people' }, () => loadWishes()).subscribe();
+  sb.channel('poll').on('postgres_changes', { event:'*', schema:'public', table:'polls' }, () => loadPolls()).on('postgres_changes', { event:'*', schema:'public', table:'poll_answers' }, () => loadPolls()).subscribe();
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me){ loadEvents(); loadCats(); loadShop(); loadKnown(); loadWishes(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && me){ loadEvents(); loadCats(); loadShop(); loadKnown(); loadWishes(); loadPolls(); } });
 
 /* ================= nákupní seznam ================= */
 let wishes = [], wPeople = [], wOcc = 'all', wDet = null;
@@ -685,32 +719,33 @@ async function loadWishes(){ const [a, b] = await Promise.all([sb.from('wishes')
 function wLink(v){ v = (v || '').trim(); if (!v) return null; const m = v.match(/https?:\/\/[^\s<>"']+/i); if (m) return m[0].slice(0, 1000); if (/^[^\s]+\.[a-z]{2,}(\/\S*)?$/i.test(v)) return 'https://' + v.slice(0, 990); return null; }
 function wHost(l){ try { return new URL(l).hostname.replace(/^www\./, ''); } catch(_){ return 'odkaz'; } }
 function wKey(w){ return w.person_id ? 'p:' + w.person_id : 'm:' + w.member_id; }
+function wKeys(w){ return [wKey(w), ...(w.also_for || []).filter(k => k !== wKey(w) && wWho(k))]; }
 function wWho(k){ const [t, id] = k.split(':'); const x = t === 'p' ? wPeople.find(p => p.id === id) : memberOf(id); return x ? { name: x.name, color: x.color } : null; }
 function renderWishes(){
   const main = $('#main');
   const ok = w => wOcc === 'all' || w.occasion === wOcc || w.occasion === 'kdykoli';
   const OI = { vanoce: '🎄', narozeniny: '🎂', kdykoli: '✨' };
   const secs = [['m:' + me.id, me.name, me.color, true], ...members.filter(m => m.id !== me.id).map(m => ['m:' + m.id, m.name, m.color, false]), ...wPeople.map(p => ['p:' + p.id, p.name, p.color, false])];
-  const row = w => { const own = w.member_id === me.id, canEd = own || !!w.person_id || w.created_by === me.id, rb = w.reserved_by ? memberOf(w.reserved_by) : null, op = wDet === w.id;
+  const row = (w, sk) => { const ks = wKeys(w), multi = ks.length > 1, own = ks.includes('m:' + me.id), canEd = own || ks.some(k => k[0] === 'p') || w.created_by === me.id, rb = w.reserved_by ? memberOf(w.reserved_by) : null, did = sk + '|' + w.id, op = wDet === did;
     const res = !w.reserved_by ? (own ? '' : `<button class="wc-r" data-r="${w.id}">🎁 Koupím to já</button>`) : w.reserved_by === me.id ? `<button class="wc-r mine" data-r="${w.id}">✓ Kupuji já · klepnutím zrušíte</button>` : `<span class="wc-r lock">🔒 Koupí ${esc(rb ? rb.name : 'někdo')}</span>`;
-    return `<div class="wr ${op ? 'open' : ''}"><button class="wr-h" data-w="${w.id}"><span class="wr-o">${OI[w.occasion] || ''}</span><b>${esc(w.text)}</b>${w.link ? '<span class="wr-x">🔗</span>' : ''}${(w.hidden_from || []).length ? '<span class="wr-x" title="Tajné">🤫</span>' : ''}${w.reserved_by ? `<span class="wr-lk" style="background:${rb ? rb.color : 'var(--muted)'}">🔒 ${esc(rb ? rb.name[0] : '?')}</span>` : ''}<span class="wr-a">${op ? '▾' : '›'}</span></button>` +
-      (op ? `<div class="wr-d"><span class="wc-o">${OCC[w.occasion] || ''}</span>${(w.hidden_from || []).length ? `<div class="w-sec">🤫 Neuvidí: ${w.hidden_from.map(id => { const m = memberOf(id); return m ? esc(m.name) : ''; }).filter(Boolean).join(', ')}</div>` : ''}${w.note ? `<div class="wc-n">${esc(w.note)}</div>` : ''}
+    return `<div class="wr ${op ? 'open' : ''}"><button class="wr-h" data-w="${did}"><span class="wr-o">${OI[w.occasion] || ''}</span><b>${esc(w.text)}</b>${multi ? '<span class="wr-x" title="Společný dárek">👥</span>' : ''}${w.link ? '<span class="wr-x">🔗</span>' : ''}${(w.hidden_from || []).length ? '<span class="wr-x" title="Tajné">🤫</span>' : ''}${w.reserved_by ? `<span class="wr-lk" style="background:${rb ? rb.color : 'var(--muted)'}">🔒 ${esc(rb ? rb.name[0] : '?')}</span>` : ''}<span class="wr-a">${op ? '▾' : '›'}</span></button>` +
+      (op ? `<div class="wr-d"><span class="wc-o">${OCC[w.occasion] || ''}</span>${multi ? `<div class="w-sec">👥 Společný dárek pro: ${ks.map(k => { const x = wWho(k); return x ? `<span class="w-mp" style="background:${x.color}">${esc(x.name)}</span>` : ''; }).join(' ')}</div>` : ''}${(w.hidden_from || []).length ? `<div class="w-sec">🤫 Neuvidí: ${w.hidden_from.map(id => { const m = memberOf(id); return m ? esc(m.name) : ''; }).filter(Boolean).join(', ')}</div>` : ''}${w.note ? `<div class="wc-n">${esc(w.note)}</div>` : ''}
         ${w.link && /^https?:\/\//i.test(w.link) ? `<a class="wc-l" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">🔗 ${esc(wHost(w.link))} ↗</a>` : ''}${res}
         ${canEd ? `<button class="wr-e" data-e="${w.id}">✏️ Upravit</button>` : ''}</div>` : '') + '</div>'; };
   main.innerHTML = `<div class="wish"><div class="who w-occ">${[['all','Vše'],['vanoce','🎄 Vánoce'],['narozeniny','🎂 Narozeniny']].map(([k,t]) => `<button data-o="${k}" class="${wOcc === k ? 'on' : ''}">${t}</button>`).join('')}</div>` +
-    secs.map(([k, name, color, own]) => { const list = wishes.filter(w => wKey(w) === k && ok(w)), op = wOpen.has(k), nr = list.filter(w => w.reserved_by).length, isP = k[0] === 'p';
+    secs.map(([k, name, color, own]) => { const list = wishes.filter(w => wKeys(w).includes(k) && ok(w)), op = wOpen.has(k), nr = list.filter(w => w.reserved_by).length, isP = k[0] === 'p';
       return `<section class="wsec ${op ? 'open' : ''}"><button class="wh" data-s="${k}"><i style="background:${color}">${esc(name[0])}</i><span class="wh-n">${own ? 'Moje přání' : esc(name)}</span><small>${list.length || ''}</small>${nr ? `<span class="wh-r">🔒 ${nr}</span>` : ''}<span class="wh-a">${op ? '▾' : '›'}</span></button>` +
-        (op ? `<div class="wb">${list.map(row).join('') || `<div class="free">${own ? 'Zatím tu nic nemáte.' : isP ? 'Zatím žádný nápad na dárek.' : 'Zatím tu nic není.'}</div>`}
+        (op ? `<div class="wb">${list.map(w => row(w, k)).join('') || `<div class="free">${own ? 'Zatím tu nic nemáte.' : isP ? 'Zatím žádný nápad na dárek.' : 'Zatím tu nic není.'}</div>`}
           <div class="wb-a"><button class="btn ghost" data-add="${k}">+ ${isP ? 'Přidat nápad na dárek' : 'Přidat přání'}</button>${isP ? `<button class="btn ghost wb-p" data-pe="${k.slice(2)}" aria-label="Upravit">✏️</button>` : ''}</div></div>` : '') + '</section>'; }).join('') +
     `<button class="sh-cfg" id="w-person" style="margin-top:6px">+ Přidat člověka (babička, kamarád…)</button>
-    <div class="hint">Klepnutím na jméno se rozbalí přání, klepnutím na přání jeho podrobnosti. Když dáte „Koupím to já“, všichni uvidí, že je dárek zamluvený, aby se nekoupil dvakrát. Nápad na dárek pro někoho z rodiny se mu automaticky skryje (🤫) – v úpravě u „Kdo to uvidí“ si vyberete, kdo ho uvidí a kdo ne.</div></div>`;
+    <div class="hint">Klepnutím na jméno se rozbalí přání, klepnutím na přání jeho podrobnosti. Když dáte „Koupím to já“, všichni uvidí, že je dárek zamluvený, aby se nekoupil dvakrát. Společný dárek pro víc lidí (👥) – v úpravě u „Pro koho“ klepněte na víc jmen. Nápad na dárek pro někoho z rodiny se mu automaticky skryje (🤫) – v úpravě u „Kdo to uvidí“ si vyberete, kdo ho uvidí a kdo ne.</div></div>`;
   main.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { wOcc = b.dataset.o; renderWishes(); });
   main.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { const k = b.dataset.s; wOpen.has(k) ? wOpen.delete(k) : wOpen.add(k); saveWO(); renderWishes(); });
   main.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { wDet = wDet === b.dataset.w ? null : b.dataset.w; renderWishes(); });
   main.querySelectorAll('[data-add]').forEach(b => b.onclick = () => wishEditor(null, b.dataset.add));
   main.querySelectorAll('[data-pe]').forEach(b => b.onclick = () => personEditor(wPeople.find(p => p.id === b.dataset.pe)));
   $('#w-person').onclick = () => personEditor(null);
-  main.querySelectorAll('[data-e]').forEach(b => b.onclick = () => wishEditor(wishes.find(w => w.id === b.dataset.e)));
+  main.querySelectorAll('[data-e]').forEach(b => b.onclick = () => wishEditor(wishes.find(w => w.id === b.dataset.e), b.closest('.wsec') && b.closest('.wsec').querySelector('[data-s]').dataset.s));
   main.querySelectorAll('[data-r]').forEach(b => b.onclick = async () => { const w = wishes.find(x => x.id === b.dataset.r); if (!w) return;
     const mine = w.reserved_by === me.id; if (w.reserved_by && !mine) return;
     const patch = mine ? { reserved_by: null, reserved_at: null } : { reserved_by: me.id, reserved_at: new Date().toISOString() };
@@ -731,7 +766,10 @@ function personEditor(p){
     paint(); sh.querySelectorAll('.p-cols button').forEach(b => b.onclick = () => { col = b.dataset.c; paint(); });
     if (!p) setTimeout(() => sh.querySelector('#p-n').focus(), 50);
     sh.querySelector('#p-x').onclick = closeSheet;
-    const del = sh.querySelector('#p-del'); if (del) del.onclick = async () => { if (!confirm('Odebrat „' + p.name + '“ i se všemi jeho přáními?')) return; closeSheet(); wPeople = wPeople.filter(x => x.id !== p.id); wishes = wishes.filter(w => w.person_id !== p.id); renderWishes(); const r = await sb.from('wish_people').delete().eq('id', p.id); if (r.error) toast('Smazání se nepovedlo'); loadWishes(); };
+    const del = sh.querySelector('#p-del'); if (del) del.onclick = async () => { if (!confirm('Odebrat „' + p.name + '“ i se všemi jeho přáními?')) return; closeSheet(); const pk = 'p:' + p.id;
+      for (const w of wishes.filter(w => wKeys(w).includes(pk) && wKeys(w).length > 1)){ const rest = wKeys(w).filter(k => k !== pk), [tt, tid] = rest[0].split(':');
+        const patch = { member_id: tt === 'm' ? tid : null, person_id: tt === 'p' ? tid : null, also_for: rest.slice(1) }; Object.assign(w, patch); await sb.from('wishes').update(patch).eq('id', w.id); }
+      wPeople = wPeople.filter(x => x.id !== p.id); wishes = wishes.filter(w => w.person_id !== p.id); renderWishes(); const r = await sb.from('wish_people').delete().eq('id', p.id); if (r.error) toast('Smazání se nepovedlo'); loadWishes(); };
     sh.querySelector('#p-ok').onclick = async () => { const n = sh.querySelector('#p-n').value.trim().slice(0, 40); if (!n){ toast('Napište jméno'); return; } closeSheet();
       if (p){ Object.assign(p, { name: n, color: col }); renderWishes(); const r = await sb.from('wish_people').update({ name: n, color: col }).eq('id', p.id); if (r.error) toast('Uložení se nepovedlo'); }
       else { const r = await sb.from('wish_people').insert({ name: n, color: col, created_by: me.id }).select().single(); if (r.error){ toast('Uložení se nepovedlo'); return; } wPeople.push(r.data); wOpen.add('p:' + r.data.id); saveWO(); toast(n + ' přidán(a) do Přání'); }
@@ -740,12 +778,12 @@ function personEditor(p){
 }
 function wishEditor(w, key){
   const d = w || { text: '', link: '', note: '', occasion: wOcc === 'all' ? 'kdykoli' : wOcc };
-  let tk = w ? wKey(w) : (key || 'm:' + me.id), occ = d.occasion;
-  const defHid = () => { const [tt, tid] = tk.split(':'); return tt === 'm' && tid !== me.id ? [tid] : []; };
+  let tks = w ? wKeys(w) : [key || 'm:' + me.id], occ = d.occasion;
+  const defHid = () => tks.filter(k => k[0] === 'm' && k.slice(2) !== me.id).map(k => k.slice(2));
   let touched = !!w, hid = w ? [...(w.hidden_from || [])] : defHid();
   const targets = [...members.map(m => ['m:' + m.id, m.name, m.color]), ...wPeople.map(p => ['p:' + p.id, p.name, p.color])];
   openSheet(`<h3>${w ? 'Upravit přání' : 'Nové přání'}</h3>
-    <div class="field"><span>Pro koho</span><div class="who" id="w-who">${targets.map(([k, n, c]) => `<button data-id="${k}" data-c="${c}"><span class="dot" style="background:${c}"></span>${esc(n)}</button>`).join('')}</div></div>
+    <div class="field"><span>Pro koho <small style="font-weight:600">(můžete vybrat víc lidí – společný dárek)</small></span><div class="who" id="w-who">${targets.map(([k, n, c]) => `<button data-id="${k}" data-c="${c}"><span class="dot" style="background:${c}"></span>${esc(n)}</button>`).join('')}</div></div>
     <label class="field"><span>Co bych si přál(a)</span><input class="inp" id="w-t" value="${esc(d.text)}" maxlength="200" placeholder="Např. sluchátka, kniha, poukaz…"></label>
     <label class="field"><span>Odkaz na internet <small style="font-weight:600">(nepovinné)</small></span><input class="inp" id="w-l" value="${esc(d.link || '')}" inputmode="url" autocomplete="off" placeholder="Vložte odkaz z e-shopu"></label>
     <div class="field"><span>Kdy</span><div class="who" id="w-occ2">${Object.entries(OCC).map(([k,t]) => `<button data-o="${k}">${t}</button>`).join('')}</div></div>
@@ -756,10 +794,10 @@ function wishEditor(w, key){
     const paintV = () => { sh.querySelectorAll('#w-vis button').forEach(b => { const off = hid.includes(b.dataset.v); b.classList.toggle('off', off); b.classList.toggle('on', !off); b.style.background = off ? '' : b.dataset.c; });
       sh.querySelector('#w-vh').textContent = hid.length ? '🤫 Tajné – neuvidí: ' + hid.map(id => (memberOf(id) || {}).name).filter(Boolean).join(', ') : 'Uvidí všichni.'; };
     sh.querySelectorAll('#w-vis button').forEach(b => b.onclick = () => { touched = true; const id = b.dataset.v; hid = hid.includes(id) ? hid.filter(x => x !== id) : [...hid, id]; paintV(); });
-    const paint = () => { paintV(); sh.querySelectorAll('#w-who button').forEach(b => { const on = b.dataset.id === tk; b.classList.toggle('on', on); b.style.background = on ? b.dataset.c : ''; });
+    const paint = () => { paintV(); sh.querySelectorAll('#w-who button').forEach(b => { const on = tks.includes(b.dataset.id); b.classList.toggle('on', on); b.style.background = on ? b.dataset.c : ''; });
       sh.querySelectorAll('#w-occ2 button').forEach(b => { const on = b.dataset.o === occ; b.classList.toggle('on', on); b.style.background = on ? 'var(--accent)' : ''; }); };
     paint();
-    sh.querySelectorAll('#w-who button').forEach(b => b.onclick = () => { tk = b.dataset.id; if (!touched) hid = defHid(); paint(); });
+    sh.querySelectorAll('#w-who button').forEach(b => b.onclick = () => { const id = b.dataset.id; if (tks.includes(id)){ if (tks.length === 1) return; tks = tks.filter(x => x !== id); } else tks = [...tks, id]; if (!touched) hid = defHid(); paint(); });
     sh.querySelectorAll('#w-occ2 button').forEach(b => b.onclick = () => { occ = b.dataset.o; paint(); });
     if (!w) setTimeout(() => sh.querySelector('#w-t').focus(), 50);
     sh.querySelector('#w-x').onclick = closeSheet;
@@ -769,12 +807,103 @@ function wishEditor(w, key){
       if (!link && !t){ toast('Napište, co byste si přáli'); return; }
       if (lraw && !link){ toast('Odkaz nevypadá jako webová adresa'); return; }
       if (!t) t = wHost(link);
-      const [tt, tid] = tk.split(':');
-      const row = { member_id: tt === 'm' ? tid : null, person_id: tt === 'p' ? tid : null, text: t.slice(0, 200), link, note: sh.querySelector('#w-n').value.trim().slice(0, 500) || null, occasion: occ, hidden_from: hid.filter(id => id !== me.id) };
-      closeSheet(); wOpen.add(tk); saveWO();
+      const [tt, tid] = tks[0].split(':');
+      const row = { member_id: tt === 'm' ? tid : null, person_id: tt === 'p' ? tid : null, also_for: tks.slice(1), text: t.slice(0, 200), link, note: sh.querySelector('#w-n').value.trim().slice(0, 500) || null, occasion: occ, hidden_from: hid.filter(id => id !== me.id) };
+      closeSheet(); tks.forEach(k => wOpen.add(k)); saveWO();
       if (w){ Object.assign(w, row); renderWishes(); const r = await sb.from('wishes').update(row).eq('id', w.id); if (r.error) toast('Uložení se nepovedlo'); }
       else { row.created_by = me.id; const r = await sb.from('wishes').insert(row).select().single(); if (r.error) toast('Uložení se nepovedlo'); else { wishes.push(r.data); toast('Přání uloženo 🎁'); } }
       renderWishes(); loadWishes();
+    };
+  });
+}
+/* ================= ankety ================= */
+let polls = [], pAns = [], pDraft = {};
+async function loadPolls(){
+  const a = await sb.from('polls').select('*').order('created_at', { ascending: false }).limit(60); if (a.error || !a.data) return;
+  const ids = a.data.map(p => p.id); let ans = [];
+  if (ids.length){ const b = await sb.from('poll_answers').select('*').in('poll_id', ids); if (b.error) return; ans = b.data || []; }
+  polls = a.data; pAns = ans; pollBadge(); if (view === 'poll' && !document.activeElement?.matches?.('.pa-in')) renderPolls();
+}
+function pollBadge(){ const n = polls.filter(p => !p.closed_at && p.created_by !== me.id && !pAns.some(a => a.poll_id === p.id && a.member_id === me.id)).length; const b = $('#poll-n'); if (b) b.textContent = n ? n : ''; }
+function pAgo(t){ const d = (Date.now() - new Date(t)) / 6e4; if (d < 1) return 'teď'; if (d < 60) return 'před ' + Math.floor(d) + ' min'; if (d < 1440) return 'před ' + Math.floor(d / 60) + ' h'; const x = new Date(t); return x.getDate() + '. ' + (x.getMonth() + 1) + '.'; }
+function renderPolls(){
+  const main = $('#main');
+  const card = p => {
+    const au = memberOf(p.created_by), ans = pAns.filter(a => a.poll_id === p.id), mine = ans.find(a => a.member_id === me.id), closed = !!p.closed_at, yn = p.mode === 'yesno';
+    const aud = members.filter(m => !(p.hidden_from || []).includes(m.id)), wait = aud.filter(m => !ans.some(a => a.member_id === m.id));
+    const ny = ans.filter(a => a.vote === 'ano').length, nn = ans.filter(a => a.vote === 'ne').length, tot = ny + nn;
+    const bar = yn && tot ? `<div class="pl-bar"><i style="width:${Math.round(ny / tot * 100)}%"></i></div>` : '';
+    const list = ans.slice().sort((x, y) => new Date(x.updated_at) - new Date(y.updated_at)).map(a => { const m = memberOf(a.member_id); if (!m) return '';
+      return `<div class="pa"><i style="background:${m.color}">${esc(m.name[0])}</i><div><b>${esc(m.name)}</b>${a.vote ? `<span class="pa-v ${a.vote}">${a.vote === 'ano' ? '👍 Ano' : '👎 Ne'}</span>` : ''}${a.comment ? `<div class="pa-c">${esc(a.comment)}</div>` : ''}</div>${a.member_id === me.id && a.comment && !closed ? `<button class="pa-ed" data-ed="${p.id}" aria-label="Upravit">✏️</button>` : ''}</div>`; }).join('');
+    const d = pDraft[p.id] || '';
+    const form = closed ? '' : `<div class="pl-me">${yn ? `<div class="pl-yn"><button data-v="ano" data-p="${p.id}" class="${mine && mine.vote === 'ano' ? 'on ano' : ''}">👍 Ano</button><button data-v="ne" data-p="${p.id}" class="${mine && mine.vote === 'ne' ? 'on ne' : ''}">👎 Ne</button></div>` : ''}
+      <div class="pl-txt"><textarea class="inp pa-in" data-p="${p.id}" maxlength="1000" rows="1" placeholder="${mine && mine.comment ? 'Napsat jinou odpověď…' : yn ? 'Nebo napište svými slovy…' : 'Napište svou odpověď…'}">${esc(d)}</textarea><button class="btn pa-send" data-send="${p.id}" aria-label="Odeslat">➤</button></div></div>`;
+    return `<div class="pl ${closed ? 'closed' : ''}"><div class="pl-h"><i style="background:${au ? au.color : 'var(--muted)'}">${esc(au ? au.name[0] : '?')}</i><span>${esc(au ? au.name : 'Někdo')} se ptá · ${pAgo(p.created_at)}${(p.hidden_from || []).length ? ' · 🤫' : ''}${closed ? ' · <b>ukončeno</b>' : ''}</span>${p.created_by === me.id ? `<button class="pl-m" data-pm="${p.id}" aria-label="Možnosti">⋯</button>` : ''}</div>
+      <div class="pl-q">${esc(p.question)}</div>
+      ${yn ? `<div class="pl-sum"><span>👍 Ano <b>${ny}</b></span><span>👎 Ne <b>${nn}</b></span></div>${bar}` : ''}
+      ${list ? `<div class="pl-as">${list}</div>` : ''}
+      ${wait.length && !closed ? `<div class="pl-w">Čeká se na: ${wait.map(m => esc(m.name)).join(', ')}</div>` : ''}
+      ${form}</div>`;
+  };
+  const open = polls.filter(p => !p.closed_at), done = polls.filter(p => p.closed_at);
+  main.innerHTML = `<div class="polls"><button class="btn pl-new" id="pl-new">+ Zeptat se rodiny</button>` +
+    (open.length ? open.map(card).join('') : '<div class="free">Žádná otevřená anketa. Zeptejte se ostatních na jejich názor.</div>') +
+    (done.length ? `<div class="pl-sep">Ukončené</div>` + done.map(card).join('') : '') +
+    `<div class="hint" style="margin-top:12px">Anketa = otázka pro celou rodinu. Ostatní odpoví 👍 Ano / 👎 Ne a můžou připsat i vlastní slova. Kdo ještě neodpověděl, vidíte pod otázkou. Otázku můžete před někým skrýt (🤫) – třeba když jde o překvapení.</div></div>`;
+  $('#pl-new').onclick = () => pollEditor();
+  main.querySelectorAll('.pa-in').forEach(t => { const fit = () => { t.style.height = 'auto'; t.style.height = Math.min(160, Math.max(46, t.scrollHeight + 2)) + 'px'; }; fit(); t.oninput = () => { pDraft[t.dataset.p] = t.value; fit(); }; t.onblur = () => setTimeout(() => { if (view === 'poll' && !document.activeElement?.matches?.('.pa-in')) renderPolls(); }, 300); });
+  main.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { const id = b.dataset.p, mine = pAns.find(a => a.poll_id === id && a.member_id === me.id);
+    const vote = mine && mine.vote === b.dataset.v ? null : b.dataset.v; pollSave(id, { vote }); });
+  main.querySelectorAll('[data-send]').forEach(b => b.onclick = () => { const id = b.dataset.send, t = main.querySelector(`.pa-in[data-p="${id}"]`); const c = (t.value || '').trim().slice(0, 1000);
+    const mine = pAns.find(a => a.poll_id === id && a.member_id === me.id);
+    if (!c){ if (mine && mine.comment && confirm('Smazat vaši napsanou odpověď?')) pollSave(id, { comment: null }); else if (!mine || !mine.comment) toast('Napište odpověď'); return; }
+    pollSave(id, { comment: c }, true); });
+  main.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { const id = b.dataset.ed, mine = pAns.find(a => a.poll_id === id && a.member_id === me.id), t = main.querySelector(`.pa-in[data-p="${id}"]`); if (!t || !mine) return;
+    t.value = mine.comment || ''; pDraft[id] = t.value; t.dispatchEvent(new Event('input')); t.focus(); });
+  main.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => pollMenu(polls.find(p => p.id === b.dataset.pm)));
+}
+async function pollSave(id, patch, isText){
+  const mine = pAns.find(a => a.poll_id === id && a.member_id === me.id);
+  const row = Object.assign({ poll_id: id, member_id: me.id, vote: mine ? mine.vote : null, comment: mine ? mine.comment : null }, patch, { updated_at: new Date().toISOString() });
+  delete pDraft[id];
+  if (!row.vote && !row.comment){ pAns = pAns.filter(a => a !== mine); renderPolls(); pollBadge(); if (mine){ const r = await sb.from('poll_answers').delete().eq('poll_id', id).eq('member_id', me.id); if (r.error) toast('Uložení se nepovedlo'); } return; }
+  if (mine) Object.assign(mine, row); else pAns.push(row);
+  renderPolls(); pollBadge(); if (isText) toast('Odpověď odeslána');
+  const r = await sb.from('poll_answers').upsert(row, { onConflict: 'poll_id,member_id' });
+  if (r.error){ toast('Uložení se nepovedlo'); loadPolls(); return; }
+  sb.functions.invoke('invite', { body: { kind: 'answer', poll_id: id } }).catch(()=>{});
+}
+function pollMenu(p){ if (!p) return;
+  openSheet(`<h3>Anketa</h3><div class="hint" style="margin-top:0">${esc(p.question)}</div>
+    <button class="btn ghost" id="pm-c" style="width:100%">${p.closed_at ? '🔓 Znovu otevřít' : '🏁 Ukončit anketu'}</button>
+    <button class="btn ghost" id="pm-d" style="width:100%;margin-top:10px;color:var(--danger)">🗑️ Smazat anketu</button>
+    <button class="btn ghost" id="pm-x" style="width:100%;margin-top:10px">Zavřít</button>`, sh => {
+    sh.querySelector('#pm-x').onclick = closeSheet;
+    sh.querySelector('#pm-c').onclick = async () => { closeSheet(); const v = p.closed_at ? null : new Date().toISOString(); p.closed_at = v; renderPolls(); pollBadge(); const r = await sb.from('polls').update({ closed_at: v }).eq('id', p.id); if (r.error) toast('Uložení se nepovedlo'); loadPolls(); };
+    sh.querySelector('#pm-d').onclick = async () => { if (!confirm('Smazat anketu i se všemi odpověďmi?')) return; closeSheet(); polls = polls.filter(x => x.id !== p.id); renderPolls(); pollBadge(); const r = await sb.from('polls').delete().eq('id', p.id); if (r.error) toast('Smazání se nepovedlo'); loadPolls(); };
+  });
+}
+function pollEditor(){
+  let mode = 'yesno', hid = [];
+  openSheet(`<h3>Zeptat se rodiny</h3>
+    <label class="field"><span>Otázka</span><textarea class="inp" id="pq" maxlength="300" placeholder="Např. Pojedeme o víkendu na chalupu?"></textarea></label>
+    <div class="field"><span>Jak se bude odpovídat</span><div class="who" id="pmode"><button data-m="yesno">👍👎 Ano / ne + slova</button><button data-m="text">💬 Jen svými slovy</button></div></div>
+    <div class="field"><span>Kdo to uvidí <small style="font-weight:600">(klepnutím skryjete)</small></span><div class="who" id="pvis">${members.filter(m => m.id !== me.id).map(m => `<button data-v="${m.id}" data-c="${m.color}"><span class="dot" style="background:${m.color}"></span>${esc(m.name)}</button>`).join('')}</div><div class="w-sec" id="pvh"></div></div>
+    <div class="actions"><button class="btn ghost" id="p-x">Zrušit</button><button class="btn" id="p-ok">Zeptat se</button></div>`, sh => {
+    const paint = () => { sh.querySelectorAll('#pmode button').forEach(b => { const on = b.dataset.m === mode; b.classList.toggle('on', on); b.style.background = on ? 'var(--accent)' : ''; });
+      sh.querySelectorAll('#pvis button').forEach(b => { const off = hid.includes(b.dataset.v); b.classList.toggle('off', off); b.classList.toggle('on', !off); b.style.background = off ? '' : b.dataset.c; });
+      sh.querySelector('#pvh').textContent = hid.length ? '🤫 Neuvidí: ' + hid.map(id => (memberOf(id) || {}).name).filter(Boolean).join(', ') : 'Uvidí všichni.'; };
+    paint();
+    sh.querySelectorAll('#pmode button').forEach(b => b.onclick = () => { mode = b.dataset.m; paint(); });
+    sh.querySelectorAll('#pvis button').forEach(b => b.onclick = () => { const id = b.dataset.v; hid = hid.includes(id) ? hid.filter(x => x !== id) : [...hid, id]; paint(); });
+    setTimeout(() => sh.querySelector('#pq').focus(), 50);
+    sh.querySelector('#p-x').onclick = closeSheet;
+    sh.querySelector('#p-ok').onclick = async () => { const q = sh.querySelector('#pq').value.trim().slice(0, 300); if (!q){ toast('Napište otázku'); return; }
+      if (hid.length >= members.length - 1){ toast('Otázku by nikdo jiný neviděl'); return; }
+      closeSheet(); const r = await sb.from('polls').insert({ question: q, mode, hidden_from: hid, created_by: me.id }).select().single();
+      if (r.error){ toast('Uložení se nepovedlo'); return; }
+      polls.unshift(r.data); renderPolls(); pollBadge(); toast('Otázka odeslána 🗳️');
+      sb.functions.invoke('invite', { body: { kind: 'poll', poll_id: r.data.id } }).catch(()=>{});
     };
   });
 }
@@ -1084,9 +1213,10 @@ function renderCore(){
   rebuildOcc();
   const av = $('#btn-settings'); av.style.background = me.color; const nn = newsList().filter(x => x.fresh).length;
   av.innerHTML = esc(me.name[0]) + (nn ? `<span class="nbadge">${nn > 9 ? '9+' : nn}</span>` : '');
-  document.body.classList.toggle('shopping', view==='shop' || view==='wish'); shopBadge();
+  document.body.classList.toggle('shopping', view==='shop' || view==='wish' || view==='poll'); shopBadge(); pollBadge();
   if (view==='shop'){ $('#hdr-title').innerHTML = 'Nákup<span class="brand">Šotendář</span>'; renderShop(); return; }
   if (view==='wish'){ $('#hdr-title').innerHTML = 'Přání<span class="brand">Šotendář</span>'; renderWishes(); return; }
+  if (view==='poll'){ $('#hdr-title').innerHTML = 'Ankety<span class="brand">Šotendář</span>'; renderPolls(); return; }
   $('#hdr-title').innerHTML = hdrTitle(view==='list' ? parseKey(selDay) : monthCursor);
   renderChips();
   if (view==='list') renderList(); else renderMonth();
