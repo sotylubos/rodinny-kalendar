@@ -510,7 +510,7 @@ const COLORS = ['#3B6FD8','#D9487A','#2E9E6A','#E08A1E','#8A5CD6','#0E9AA7','#C8
 
 /* ================= state ================= */
 let user = null, me = null, members = [], events = [], booted = false;
-let view = 'list', filter = 'all', selDay = todayKey(), monthCursor = firstOfMonth(new Date()), showPast = false, rangeDays = 60;
+let view = (() => { try { return localStorage.getItem('rk-view') === 'month' ? 'month' : 'list'; } catch(_){ return 'list'; } })(), filter = 'all', selDay = todayKey(), monthCursor = firstOfMonth(new Date()), showPast = false, rangeDays = 60;
 
 /* ================= utils ================= */
 const $ = s => document.querySelector(s);
@@ -1202,11 +1202,12 @@ function iconFor(t){ const n = norm(t); for (const [re,i] of ICON_RE) if (re.tes
 
 /* ================= render ================= */
 function setView(v){
-  if (v === view) return; view = v; document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on', x.dataset.view===v));
+  if (v === view) return; view = v; if (v==='list' || v==='month'){ try { localStorage.setItem('rk-view', v); } catch(_){} } document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on', x.dataset.view===v));
   if (view==='month') monthCursor = firstOfMonth(parseKey(selDay));
   render(); window.scrollTo({top:0});
 }
 document.querySelectorAll('.seg button').forEach(b => b.onclick = () => setView(b.dataset.view));
+document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x.dataset.view===view)); // otevřít v naposledy použitém pohledu kalendáře
 function render(){ renderCore(); dialSync(); }
 function renderCore(){
   if (!me) return;
