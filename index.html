@@ -1196,6 +1196,9 @@ function dayExtra(k){ const n = nameDay(k), hl = holiday(k), dc = dstChange(k); 
 const ICONS = [['zub','🦷'],['doktor|lekar|ordinac|nemocnic|ockovan|prohlidk|vysetren','🩺'],['narozenin','🎂'],['svatek|jmenin','🌸'],['vyroci|svatb','💍'],['oslav|party|vecirek','🎉'],['box','🥊'],['fotbal','⚽'],['hokej','🏒'],['tenis','🎾'],['plavan|bazen','🏊'],['kolo|cyklo','🚴'],['trenink|posilovn|fitness|beh|sport|zapas','🏋️'],['motork|moto','🏍️'],['skol|tridni|rodicovsk|pisemk|test|zkousk|maturit','🏫'],['prace|smena|sluzb|porad|meeting|schuzk','💼'],['dovolen|vylet|chalup|chat','🏖️'],['letadl|letiste|odlet|prilet','✈️'],['vlak|nadrazi','🚆'],['kadern|holic|strih','💇'],['kosmetik|manikur|pedikur','💅'],['auto|servis|stk|pneu|myt','🚗'],['nakup|obchod','🛒'],['vecere|obed|snidan|restaurac|kavarn|pizza','🍽️'],['kino|kina|film','🎬'],['divadl|koncert|muzikal|opera','🎭'],['urad|banka|posta|notar','🏛️'],['plat|zaplatit|faktur|najem|splatk','💳'],['veterin|pes|psa|kocka','🐾'],['uklid|prani|zehleni','🧹'],['zahrad|seka','🌱'],['babick|dedeck|navstev','👵']];
 const ICON_RE = ICONS.map(([p,i]) => [new RegExp(p), i]);
 function isBday(t){ return /narozenin/.test(norm(t)); }
+function isAnniv(t){ return !isBday(t) && /vyroci/.test(norm(t)); }
+function hasYear(t){ return isBday(t) || isAnniv(t); }
+function yearLbl(t){ return isAnniv(t) ? 'Rok, kdy to bylo – např. rok svatby (aplikace pak ukáže, kolik let to je)' : 'Rok narození (aplikace pak ukáže věk)'; }
 function yearsTxt(n){ return n===1 ? '1 rok' : (n>=2 && n<=4) ? n+' roky' : n+' let'; }
 function ageOf(e){ const a = e.birth_year ? +evStartKey(e).slice(0,4) - e.birth_year : 0; return a > 0 ? a : 0; }
 function iconFor(t){ const n = norm(t); for (const [re,i] of ICON_RE) if (re.test(n)) return i; return ''; }
@@ -1354,7 +1357,7 @@ function openDetail(e){
   const dateTxt = e.all_day ? (evEndKey(e)!==evStartKey(e) ? dayLabel(evStartKey(e)).join(' ')+' – '+dayLabel(evEndKey(e)).join(' ') : dayLabel(evStartKey(e)).join(', ')) : dayLabel(evStartKey(e)).join(', ');
   const timeTxt = e.all_day ? 'Celý den' : hm(s) + (en ? ' – ' + hm(en) : '');
   openSheet(`
-    <div class="detail-title">${esc(e.title)}${ageOf(e)?`<span class="age"> · ${yearsTxt(ageOf(e))}</span>`:''}</div>${e.birth_year?`<div class="detail-row">🎂<span>Narozen(a) ${e.birth_year}</span></div>`:''}
+    <div class="detail-title">${esc(e.title)}${ageOf(e)?`<span class="age"> · ${yearsTxt(ageOf(e))}</span>`:''}</div>${e.birth_year?(isAnniv(e.title)?`<div class="detail-row">💍<span>Od roku ${e.birth_year}</span></div>`:`<div class="detail-row">🎂<span>Narozen(a) ${e.birth_year}</span></div>`):''}
     <div class="detail-row">${IC.cal}<span>${esc(dateTxt)}</span></div>
     <div class="detail-row">${IC.clock}<span>${timeTxt}</span></div>
     <div class="detail-row">${IC.user}<span class="meta" style="margin:0;flex-wrap:wrap">${tagsOf(e)}</span></div>
@@ -1418,7 +1421,7 @@ function openEditor(e, preset, draft){
   openSheet(`
     <h3>${draft?'Upravit před uložením':isNew?'Nová událost':'Upravit událost'}</h3>
     <label class="field"><span>Co</span><input class="inp" id="f-title" placeholder="Zubař, práce, trénink…" value="${esc(d.title)}" maxlength="200"></label>
-    <label class="field ${isBday(d.title)?'':'hidden'}" id="w-by"><span>Rok narození (aplikace pak ukáže věk)</span><input class="inp" id="f-by" type="number" inputmode="numeric" min="1900" max="2100" placeholder="např. 1956" value="${d.birth_year||''}"></label>
+    <label class="field ${hasYear(d.title)?'':'hidden'}" id="w-by"><span id="l-by">${yearLbl(d.title)}</span><input class="inp" id="f-by" type="number" inputmode="numeric" min="1900" max="2100" placeholder="např. 1956" value="${d.birth_year||''}"></label>
     <div class="field"><span>Kdo <small style="font-weight:600">(můžete vybrat víc lidí)</small></span><div class="who" id="f-who">
       ${members.map(m=>`<button data-id="${m.id}" data-c="${m.color}"><span class="dot" style="background:${m.color}"></span>${esc(m.name)}</button>`).join('')}
       <button data-id="" data-c="var(--fam)"><span class="dot" style="background:var(--fam)"></span>Celá rodina</button></div></div>
@@ -1443,7 +1446,7 @@ function openEditor(e, preset, draft){
     s.querySelector('#f-who').onclick = ev => { const b=ev.target.closest('button'); if(!b) return; const id=b.dataset.id; if (!id) who = []; else who = who.includes(id) ? who.filter(x=>x!==id) : [...who, id]; setWho(); };
     s.querySelector('#f-allday').onclick = () => { allDay=!allDay; setAll(); };
     const invSw = s.querySelector('#f-invite'); invSw.classList.toggle('on', inviteOn); invSw.onclick = () => { inviteOn = !inviteOn; invSw.classList.toggle('on', inviteOn); if (inviteOn && !who.length) { who = [me.id]; setWho(); } };
-    s.querySelector('#f-title').addEventListener('input', ev => s.querySelector('#w-by').classList.toggle('hidden', !isBday(ev.target.value)));
+    s.querySelector('#f-title').addEventListener('input', ev => { s.querySelector('#w-by').classList.toggle('hidden', !hasYear(ev.target.value)); s.querySelector('#l-by').textContent = yearLbl(ev.target.value); });
     s.querySelector('#f-date').onchange = ev => { const ed=s.querySelector('#f-enddate'); if (ed.value < ev.target.value) ed.value = ev.target.value; };
     s.querySelector('#f-start').onchange = ev => { const en=s.querySelector('#f-end'); if(!en.value || en.value<=ev.target.value){ const [h,mi]=ev.target.value.split(':').map(Number); en.value=pad((h+1)%24)+':'+pad(mi); } };
     const r = s.querySelector('#f-rep'); if (r){ r.value = rep; s.querySelector('#w-until').classList.toggle('hidden', rep==='none'); if (lastKey) s.querySelector('#f-until').value = lastKey; }
@@ -1461,7 +1464,7 @@ function openEditor(e, preset, draft){
         let starts, ends;
         if (allDay){ starts = parseKey(dk); const span = Math.max(0, Math.round((parseKey(endDate)-parseKey(date))/864e5)); ends = parseKey(addDays(dk,span)); ends.setHours(23,59); }
         else { starts = new Date(dk+'T'+st); ends = et ? new Date(dk+'T'+et) : null; if (ends && ends<=starts) ends.setDate(ends.getDate()+1); }
-        const by = +s.querySelector('#f-by').value; return { title, invite: inviteOn, inviter: inviteOn ? (d.inviter || me.id) : null, birth_year: (isBday(title) && by >= 1900 && by <= 2100) ? by : null, member_id: who[0] || null, member_ids: who, all_day: allDay, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, note };
+        const by = +s.querySelector('#f-by').value; return { title, invite: inviteOn, inviter: inviteOn ? (d.inviter || me.id) : null, birth_year: (hasYear(title) && by >= 1900 && by <= 2100) ? by : null, member_id: who[0] || null, member_ids: who, all_day: allDay, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, note };
       };
       const btn = s.querySelector('#f-save'); btn.disabled = true; btn.textContent = 'Ukládám…';
       let error;
@@ -1918,7 +1921,7 @@ function openHelp(){
     ${sec('🆕','Nově přidané události','Když někdo přidá nebo upraví událost, objeví se na kolečku vpravo nahoře oranžové číslo. Klepněte na něj a pak na <b>🆕 Nově přidané</b>, rozbalí se, co kdo za poslední týden přidal nebo upravil. Nově přidané události přijdou i ve večerním přehledu v 19:00.')}
     ${sec('🛒','Nákupní seznam','Nahoře <b>🛒 Nákup</b>. Kdokoli připíše, co je potřeba koupit, i hlasem a víc věcí najednou („mléko, chleba a máslo“). V obchodě klepnutím odškrtáváte, ostatní to vidí hned. Číslo u tlačítka ukazuje, kolik věcí zbývá koupit.')}
     ${sec('🔍','Hledání','Lupa nahoře. Najde události, jména lidí, jmeniny (např. „Lukáš“) i změny času („čas“).')}
-    ${sec('🎂','Narozeniny','Když název obsahuje „narozeniny“, objeví se pole pro rok narození a kalendář pak ukazuje věk.')}
+    ${sec('🎂','Narozeniny a výročí','Když název obsahuje „narozeniny“, objeví se pole pro rok narození a kalendář pak ukazuje věk. Stejně tak u „výročí“ (např. Výročí svatby) zadáte rok, kdy to bylo, a kalendář ukáže, kolik let uplynulo.')}
     ${sec('🌸','Jmeniny, svátky, změna času','U každého dne vpravo drobně jmeniny. Státní svátky červeně, změna času tyrkysově.')}
     ${sec('🔔','Upozornění','V nastavení zapnete přehled v 7:00 (co je dnes) a v 19:00 (co je zítra). Navíc v čase, kdy událost začíná, přijde připomínka ⏰ tomu, koho se týká (u „Celá rodina“ všem). Celodenní události připomíná ranní přehled.')}
     <div class="actions" style="margin-top:14px"><button class="btn ghost" id="h-back">Zpět</button><button class="btn" id="h-idea">💡 Mám nápad</button></div>`, s => {
