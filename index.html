@@ -149,6 +149,10 @@ body.shopping .dock, body.shopping #chips{display:none!important}
 .si{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:16px;padding:12px 8px 12px 14px;margin-bottom:8px;box-shadow:var(--shadow);cursor:pointer;-webkit-tap-highlight-color:transparent}
 .si-chk{flex:none;width:26px;height:26px;border-radius:8px;border:2.5px solid var(--line);display:grid;place-items:center;font-weight:900;color:#fff;font-size:15px}
 .si-t{flex:1;min-width:0;font-weight:700;font-size:17px;overflow-wrap:anywhere}
+.si-q{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:13px;font-weight:800;white-space:nowrap;vertical-align:1px}
+.si.done .si-q{background:var(--line);color:var(--muted)}
+.se-q{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.se-q .inp{width:96px;flex:none;text-align:center}
 .si-side{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;margin:-4px 0}
 .si>i,.si-side>i{flex:none;width:22px;height:22px;border-radius:50%;color:#fff;font-style:normal;font-size:11px;font-weight:800;display:grid;place-items:center;opacity:.85}
 .si-x{flex:none;width:34px;height:34px;border-radius:10px;font-size:22px;line-height:1;color:var(--muted)}
@@ -997,7 +1001,7 @@ async function savePhoto(text, file){
   } catch(e){ toast('Fotku se nepodařilo uložit'); }
 }
 function shopEditor(o){
-  let cat = o.cat == null ? -1 : o.cat, file = null, drop = false;
+  let cat = o.cat == null ? -1 : o.cat, file = null, drop = false, unit = o.withQty && o.qty != null && +o.qty > 0 ? (o.unit || 'ks') : null;
   const cur = photoOf(o.text);
   const phHtml = () => file ? `<img src="${URL.createObjectURL(file)}" alt="">` : (!drop && cur) ? `<img src="${cur}" alt="">` : '📷';
   openSheet(`<h3>${esc(o.title)}</h3>
@@ -1005,6 +1009,7 @@ function shopEditor(o){
     <div class="se-pb"><label class="btn ghost" for="se-f">📷 <span id="se-pl">Vyfotit</span></label><label class="btn ghost" for="se-g">🖼️ Galerie<input type="file" accept="image/*" hidden id="se-g"></label>${cur ? '<button class="btn ghost" id="se-del" style="color:var(--danger)">Odebrat</button>' : ''}</div>
     <label class="field"><span>Název</span><input class="inp" id="se-t" value="${esc(o.text)}" maxlength="200" enterkeyhint="done"></label>
     <div class="field"><span>Oddělení v obchodě</span><div class="se-cats">${SHOP_SEQ.map(i => `<button data-c="${i}" class="${i === cat ? 'on' : ''}">${SHOP_CATS[i][0]} ${SHOP_CATS[i][1]}</button>`).join('')}<button data-c="-1" class="${cat === -1 ? 'on' : ''}">🛍️ Ostatní</button></div></div>
+    ${o.withQty ? `<div class="field"><span>Množství <small style="font-weight:600">(nepovinné)</small></span><div class="se-q"><input class="inp" id="se-qn" inputmode="decimal" autocomplete="off" placeholder="Kolik" value="${o.qty != null && +o.qty > 0 ? esc(String(+o.qty).replace('.', ',')) : ''}" maxlength="8"><div class="se-cats" id="se-un">${UNITS.map(u => `<button type="button" data-u="${u}" class="${u === unit ? 'on' : ''}">${u}</button>`).join('')}</div></div></div>` : ''}
     <div class="actions" style="margin-top:18px"><button class="btn ghost" id="se-x">Zrušit</button><button class="btn" id="se-ok">Uložit</button></div>${o.onDelete ? '<button class="btn ghost" id="se-rm" style="width:100%;margin-top:10px;color:var(--danger)">🗑️ Odebrat ze seznamu</button>' : ''}`, sh => {
     const rm = sh.querySelector('#se-rm'); if (rm) rm.onclick = () => { closeSheet(); o.onDelete(); };
     const ph = sh.querySelector('#se-ph');
@@ -1013,12 +1018,15 @@ function shopEditor(o){
     pick(sh.querySelector('#se-f')); pick(sh.querySelector('#se-g'));
     const del = sh.querySelector('#se-del'); if (del) del.onclick = () => { drop = true; file = null; clr(); ph.insertAdjacentText('afterbegin', '📷'); del.remove(); };
     sh.querySelectorAll('.se-cats button').forEach(b => b.onclick = () => { cat = +b.dataset.c; sh.querySelectorAll('.se-cats button').forEach(x => x.classList.toggle('on', x === b)); });
+    sh.querySelectorAll('#se-un button').forEach(b => b.onclick = () => { unit = unit === b.dataset.u ? null : b.dataset.u; sh.querySelectorAll('#se-un button').forEach(x => x.classList.toggle('on', x.dataset.u === unit)); });
     sh.querySelector('#se-x').onclick = closeSheet;
     sh.querySelector('#se-t').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); };
     sh.querySelector('#se-ok').onclick = async () => {
       const v = sh.querySelector('#se-t').value.trim().slice(0, 200); if (!v){ toast('Napište název'); return; }
+      let qty = null, un = null;
+      if (o.withQty){ const qn = parseFloat(String(sh.querySelector('#se-qn').value).replace(',', '.').replace(/\s/g, '')); if (qn > 0 && qn < 1e6){ qty = qn; un = unit || 'ks'; } }
       closeSheet();
-      try { await o.onSave(v, cat === -1 ? null : cat); } catch(e){ toast('Uložení se nepovedlo'); }
+      try { await o.onSave(v, cat === -1 ? null : cat, qty, un); } catch(e){ toast('Uložení se nepovedlo'); }
       if (file){ toast('Ukládám fotku…'); await savePhoto(v, file); }
       else if (drop){ const k = known.find(x => x.name === knownKey(v)); if (k){ k.photo = null; await sb.from('shopping_known').update({ photo: null }).eq('name', k.name); } }
       renderShopList(); drawHistory();
@@ -1040,11 +1048,23 @@ async function saveKnown(k, v, cat){
 }
 function showPhoto(text){ const u = photoOf(text); if (!u) return; openSheet(`<h3>${esc(text)}</h3><img src="${u}" alt="" style="width:100%;border-radius:16px;display:block">`); }
 function catFor(t){ const k = known.find(x => x.name === knownKey(t)); return k && k.cat != null ? k.cat : catOf(t); }
+const UNITS = ['ks', 'g', 'kg', 'ml', 'l'];
+const fmtQty = x => x.qty != null && +x.qty > 0 ? String(+x.qty).replace('.', ',') + ' ' + (x.unit || 'ks') : '';
+function unitOf(u){ u = String(u || '').toLowerCase().replace(/\.$/, ''); if (/^(x|ks|kus|kusy|kusů|kusu)$/.test(u)) return 'ks'; if (/^(g|gr|gram|gramy|gramů|gramu)$/.test(u)) return 'g'; if (/^(dkg|deka)$/.test(u)) return 'dkg'; if (/^(kg|kilo|kila|kilogram|kilogramy|kilogramů)$/.test(u)) return 'kg'; if (/^(ml|mililitr|mililitry|mililitrů)$/.test(u)) return 'ml'; if (/^(l|litr|litry|litrů|litru)$/.test(u)) return 'l'; return null; }
+function parseQty(t){
+  const U = '(x|ks|kus[yůu]?|g|gr|gram[yůu]?|dkg|deka|kg|kilo|kila|kilogram[yů]?|ml|mililitr[yů]?|l|litr[yůu]?)';
+  let m = t.match(new RegExp('^(\\d+(?:[.,]\\d+)?)\\s*' + U + '?\\s+(\\S.*)$', 'i'));
+  if (m){ const u = m[2] ? unitOf(m[2]) : 'ks'; if (u) return mkQ(m[3], m[1], u); }
+  m = t.match(new RegExp('^(\\S.*?)\\s+(\\d+(?:[.,]\\d+)?)\\s*' + U + '$', 'i'));
+  if (m){ const u = unitOf(m[3]); if (u) return mkQ(m[1], m[2], u); }
+  return { text: t, qty: null, unit: null };
+}
+function mkQ(text, n, u){ let q = parseFloat(String(n).replace(',', '.')); if (u === 'dkg'){ q *= 10; u = 'g'; } if (!(q > 0)) return { text, qty: null, unit: null }; text = text.trim(); return { text: text.charAt(0).toUpperCase() + text.slice(1), qty: q, unit: u }; }
 const inList = t => shop.some(x => !x.done && knownKey(x.text) === knownKey(t));
-async function addTexts(items){
-  items = items.map(t => t.slice(0,200)).filter(Boolean); if (!items.length) return;
+async function addTexts(items, raw){
+  items = items.map(t => raw ? { text: t.slice(0,200), qty: null, unit: null } : parseQty(t.slice(0,200))).filter(x => x.text); if (!items.length) return;
   const top = shop.reduce((m, x) => Math.max(m, spos(x)), Date.now() / 1000);
-  const rows = items.map((t, i) => ({ text: t, added_by: me.id, pos: top + 1 + i, cat: catFor(t) }));
+  const rows = items.map((q, i) => ({ text: q.text, qty: q.qty, unit: q.unit, added_by: me.id, pos: top + 1 + i, cat: catFor(q.text) }));
   shop = shop.concat(rows.map(r => Object.assign({ id: 'tmp' + Math.random(), done: false, created_at: new Date().toISOString() }, r))); renderShopList(); shopBadge(); drawHistory();
   const { error } = await sb.from('shopping_items').insert(rows); if (error) toast('Uložení se nepovedlo'); loadShop();
 }
@@ -1054,7 +1074,7 @@ function drawSuggest(){
   if (!frag){ box.innerHTML = ''; return; }
   const hits = known.filter(k => { const n = norm(k.text); return (n.startsWith(frag) || n.includes(' ' + frag)) && !inList(k.text) && n !== frag; }).slice(0, 8);
   box.innerHTML = hits.map(k => `<button class="sug-b" data-t="${esc(k.text)}">${esc(k.text)}</button>`).join('');
-  box.querySelectorAll('.sug-b').forEach(b => b.onclick = () => { const parts = inp.value.split(','); parts.pop(); inp.value = parts.map(x => x.trim()).filter(Boolean).join(', '); addTexts([b.dataset.t]); drawSuggest(); inp.focus(); });
+  box.querySelectorAll('.sug-b').forEach(b => b.onclick = () => { const parts = inp.value.split(','); parts.pop(); inp.value = parts.map(x => x.trim()).filter(Boolean).join(', '); addTexts([b.dataset.t], true); drawSuggest(); inp.focus(); });
 }
 let histOpen = false;
 const histCats = new Set((() => { try { return JSON.parse(localStorage.getItem('rk-hc') || '[]'); } catch(_){ return []; } })());
@@ -1084,7 +1104,7 @@ function drawHistory(){
     b.onclick = async ev => { if (held) return; const t = b.dataset.t;
       if (ev.target.closest('.hb-e')){ const k = known.find(x => x.text === t); if (k) shopEditor({ title: 'Upravit zboží', text: k.text, cat: okCat(k.cat) ? k.cat : catOf(k.text), onSave: (v, c) => saveKnown(k, v, c) }); return; }
       if (inList(t)){ const it = shop.find(x => !x.done && knownKey(x.text) === knownKey(t)); if (!it || String(it.id).startsWith('tmp')) return; shop = shop.filter(x => x !== it); renderShopList(); shopBadge(); drawHistory(); await sb.from('shopping_items').delete().eq('id', it.id); }
-      else addTexts([t]); };
+      else addTexts([t], true); };
   });
 }
 function shopBadge(){ const n = shop.filter(x => !x.done).length; const b = $('#shop-n'); if (b) b.textContent = n ? n : ''; }
@@ -1098,7 +1118,7 @@ function renderShop(){
     <div class="sug" id="sh-sug"></div>
     <button class="sh-hist" id="sh-hist">▸ 📋 Dříve kupované</button>
     <div id="sh-histp" hidden></div>
-    <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Seznam se sám řadí podle regálů v obchodě. Klepnutím věc odškrtnete, tužkou ✏️ opravíte, přidáte fotku nebo věc odeberete, za ⋮⋮ přesunete.</div>
+    <div class="hint" id="sh-hint">Víc věcí najednou oddělte čárkou nebo slovem „a“. Množství připište za nebo před název, např. „jablka 2 kg“, „3 rohlíky“ nebo „mléko 6 l“, případně nastavte tužkou ✏️. Seznam se sám řadí podle regálů v obchodě. Klepnutím věc odškrtnete, tužkou ✏️ opravíte, přidáte fotku nebo věc odeberete, za ⋮⋮ přesunete.</div>
     <div id="sh-list"></div>
     <button class="sh-cfg" id="sh-cfg">⚙️ Upravit oddělení obchodu</button></div>`;
   const inp = $('#sh-inp');
@@ -1128,7 +1148,7 @@ function renderShopList(){
   const box = $('#sh-list'); if (!box) return;
   const open = shop.filter(x => !x.done).sort((a,b) => (ckey(a) - ckey(b)) || (spos(a) - spos(b))), done = shop.filter(x => x.done).sort((a,b) => new Date(b.done_at||0) - new Date(a.done_at||0));
   const who = id => { const m = memberOf(id); return m ? `<i style="background:${m.color}">${esc(m.name[0])}</i>` : ''; };
-  const row = x => `<div class="si ${x.done ? 'done' : ''}" data-id="${x.id}">${x.done ? '' : '<span class="si-grip" aria-label="Přesunout">⋮⋮</span>'}<span class="si-chk">${x.done ? '✓' : ''}</span>${photoOf(x.text) ? `<img class="si-ph" src="${photoOf(x.text)}" alt="" loading="lazy">` : x.done ? '' : `<span class="si-ph si-pe" aria-label="Přidat fotku">${scat(x) == null ? '🛍️' : SHOP_CATS[scat(x)][0]}</span>`}<span class="si-t">${esc(x.text)}</span><span class="si-side">${who(x.added_by)}<button class="si-ed" aria-label="Upravit">✏️</button></span></div>`;
+  const row = x => `<div class="si ${x.done ? 'done' : ''}" data-id="${x.id}">${x.done ? '' : '<span class="si-grip" aria-label="Přesunout">⋮⋮</span>'}<span class="si-chk">${x.done ? '✓' : ''}</span>${photoOf(x.text) ? `<img class="si-ph" src="${photoOf(x.text)}" alt="" loading="lazy">` : x.done ? '' : `<span class="si-ph si-pe" aria-label="Přidat fotku">${scat(x) == null ? '🛍️' : SHOP_CATS[scat(x)][0]}</span>`}<span class="si-t">${esc(x.text)}${fmtQty(x) ? `<span class="si-q">${esc(fmtQty(x))}</span>` : ''}</span><span class="si-side">${who(x.added_by)}<button class="si-ed" aria-label="Upravit">✏️</button></span></div>`;
   let lastC = -1; const grouped = open.map(x => { const c = ckey(x); const sc = scat(x), hd = c !== lastC ? `<div class="sh-cat">${c === 99 ? '🛍️ Ostatní' : SHOP_CATS[sc][0] + ' ' + SHOP_CATS[sc][1]}</div>` : ''; lastC = c; return hd + row(x); }).join('');
   box.innerHTML = (open.length ? grouped : '<div class="free">Seznam je prázdný 🎉</div>') +
     (done.length ? `<div class="shop-dh"><span>V košíku · ${done.length}</span><button id="sh-clear">Smazat nakoupené</button></div>` + done.map(row).join('') : '');
@@ -1136,11 +1156,11 @@ function renderShopList(){
     const id = el.dataset.id; if (id.startsWith('tmp') || el.classList.contains('editing') || ev.target.closest('.si-grip')) return;
     if (ev.target.closest('.si-ph:not(.si-pe)')){ const it = shop.find(x => x.id === id); if (it) showPhoto(it.text); return; }
     if (ev.target.closest('.si-ed') || ev.target.closest('.si-pe')){ const it = shop.find(x => x.id === id); if (!it) return;
-      shopEditor({ title: 'Upravit položku', text: it.text, cat: scat(it), onSave: async (v, c) => {
+      shopEditor({ title: 'Upravit položku', text: it.text, cat: scat(it), withQty: true, qty: it.qty, unit: it.unit, onSave: async (v, c, q, u) => {
         const k = known.find(x => x.name === knownKey(it.text)); if (k && c !== (k.cat ?? null) && knownKey(v) === k.name) k.cat = c;
         if (k && k.photo && knownKey(v) !== k.name && !known.some(x => x.name === knownKey(v))){ const nk = { name: knownKey(v), text: v, cat: c, photo: k.photo, uses: 1 }; known.push(nk); sb.from('shopping_known').upsert({ name: nk.name, text: v, photo: k.photo }, { onConflict: 'name' }); }
-        it.text = v; it.cat = c; renderShopList();
-        const r = await sb.from('shopping_items').update({ text: v, cat: c }).eq('id', id); if (r.error) throw r.error; },
+        it.text = v; it.cat = c; it.qty = q; it.unit = u; renderShopList();
+        const r = await sb.from('shopping_items').update({ text: v, cat: c, qty: q, unit: u }).eq('id', id); if (r.error) throw r.error; },
         onDelete: async () => { shop = shop.filter(x => x.id !== id); renderShopList(); shopBadge(); drawHistory(); await sb.from('shopping_items').delete().eq('id', id); } });
       return; }
     if (ev.target.closest('.si-x')){ shop = shop.filter(x => x.id !== id); renderShopList(); shopBadge(); await sb.from('shopping_items').delete().eq('id', id); return; }
