@@ -148,7 +148,8 @@ body.shopping .dock, body.shopping #chips{display:none!important}
 .shop .hint{margin:8px 4px 0}
 #sh-list{margin-top:12px}
 .si{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:16px;padding:12px 8px 12px 14px;margin-bottom:8px;box-shadow:var(--shadow);cursor:pointer;-webkit-tap-highlight-color:transparent}
-.si-chk{flex:none;width:26px;height:26px;border-radius:8px;border:2.5px solid var(--line);display:grid;place-items:center;font-weight:900;color:#fff;font-size:15px}
+.si-chk{position:relative;flex:none;width:26px;height:26px;border-radius:8px;border:2.5px solid var(--line);display:grid;place-items:center;font-weight:900;color:#fff;font-size:15px}
+.si-chk::after{content:'';position:absolute;inset:-10px}
 .si-t{flex:1;min-width:0;font-weight:700;font-size:17px;overflow-wrap:anywhere}
 .si-q{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:13px;font-weight:800;white-space:nowrap;vertical-align:1px}
 .si.done .si-q{background:var(--line);color:var(--muted)}
@@ -1155,7 +1156,7 @@ function renderShopList(){
     (done.length ? `<div class="shop-dh"><span>V košíku · ${done.length}</span><button id="sh-clear">Smazat nakoupené</button></div>` + done.map(row).join('') : '');
   box.querySelectorAll('.si').forEach(el => el.onclick = async ev => {
     const id = el.dataset.id; if (id.startsWith('tmp') || el.classList.contains('editing') || ev.target.closest('.si-grip')) return;
-    if (ev.target.closest('.si-ph:not(.si-pe)')){ const it = shop.find(x => x.id === id); if (it) showPhoto(it.text); return; }
+    if (ev.target.closest('.si-ph:not(.si-pe)') || ev.target.closest('.si-t')){ const it = shop.find(x => x.id === id); if (it) showPhoto(it.text); return; }
     if (ev.target.closest('.si-ed') || ev.target.closest('.si-pe')){ const it = shop.find(x => x.id === id); if (!it) return;
       shopEditor({ title: 'Upravit položku', text: it.text, cat: scat(it), withQty: true, qty: it.qty, unit: it.unit, onSave: async (v, c, q, u) => {
         const k = known.find(x => x.name === knownKey(it.text)); if (k && c !== (k.cat ?? null) && knownKey(v) === k.name) k.cat = c;
@@ -1165,6 +1166,7 @@ function renderShopList(){
         onDelete: async () => { shop = shop.filter(x => x.id !== id); renderShopList(); shopBadge(); drawHistory(); await sb.from('shopping_items').delete().eq('id', id); } });
       return; }
     if (ev.target.closest('.si-x')){ shop = shop.filter(x => x.id !== id); renderShopList(); shopBadge(); await sb.from('shopping_items').delete().eq('id', id); return; }
+    if (!ev.target.closest('.si-chk')) return;
     const it = shop.find(x => x.id === id); if (!it) return;
     it.done = !it.done; it.done_at = it.done ? new Date().toISOString() : null; it.done_by = it.done ? me.id : null;
     try { navigator.vibrate && navigator.vibrate(8); } catch(_){}
