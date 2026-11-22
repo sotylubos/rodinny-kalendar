@@ -134,7 +134,9 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .pl-sep{margin:20px 4px 10px;font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .w-mp{display:inline-block;color:#fff;font-size:12px;font-weight:800;border-radius:999px;padding:2px 8px;margin:2px 2px 0 0}
 .seg-n:not(:empty){display:inline-block;min-width:18px;height:18px;line-height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--accent);color:#fff;font-size:11px;font-weight:800;vertical-align:1px}
-body.shopping .dial, body.shopping .bbar, body.shopping #chips{display:none!important}
+body.shopping .dial, body.shopping .rbtm{display:none!important}
+body.shopping #chips{display:none!important}
+body.shopping .seg{bottom:calc(10px + env(safe-area-inset-bottom))}
 .shop{padding-top:14px}
 .shop-add{display:flex;gap:8px}
 .shop-add .inp{flex:1;min-width:0}
@@ -194,7 +196,7 @@ body.shopping .dial, body.shopping .bbar, body.shopping #chips{display:none!impo
 .hc .hc-on{margin-left:auto;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:2px 9px;font-size:12px}
 .hc+.hist-g{padding:8px 0 6px}
 .hist-tl{display:flex;justify-content:flex-end;gap:14px;font-size:13px;font-weight:700;color:var(--accent);padding:4px 4px 0}
-.hist-go{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom));width:100%;margin-top:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:2}
+.hist-go{position:sticky;bottom:calc(var(--bbh,70px) + 12px);width:100%;margin-top:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:2}
 .sh-cfg{display:block;margin:26px auto 8px;font-size:13px;font-weight:700;color:var(--muted);padding:8px 12px}
 .ce-r{display:flex;gap:6px;align-items:center;margin-bottom:6px}
 .ce-r .inp{height:44px}
@@ -304,7 +306,7 @@ body.shopping .dial, body.shopping .bbar, body.shopping #chips{display:none!impo
 .tick.hol b,.tick.hol small{color:var(--danger)}
 .mc.hol{color:var(--danger)}
 
-main{padding:4px 16px calc(110px + env(safe-area-inset-bottom))}
+main{padding:4px 16px calc(var(--bbh,70px) + 16px)}
 .day{margin-top:18px}
 .day-h{display:flex;align-items:baseline;gap:8px;margin:0 4px 8px}
 .day-h h2{font-family:Fraunces,serif;font-weight:650;font-size:20px;margin:0;letter-spacing:-.2px}
@@ -412,20 +414,34 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
 .swatches{display:flex;gap:8px;flex-wrap:wrap}
 .swatches button{width:28px;height:28px;border-radius:50%;border:3px solid transparent}
 .swatches button.on{border-color:var(--ink)}
-.toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:700;font-size:14px;opacity:0;transition:.25s;z-index:40;pointer-events:none;max-width:90vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(var(--bbh,70px) + 16px);transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:700;font-size:14px;opacity:0;transition:.25s;z-index:40;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%)}
-.seg{position:absolute;right:0;bottom:calc(84px + 25dvh + 10px + env(safe-area-inset-bottom));width:60px;display:flex;flex-direction:column-reverse;gap:4px;padding:6px 4px;background:color-mix(in srgb,var(--card) 92%,transparent);border-radius:22px 0 0 22px;box-shadow:-4px 4px 22px rgba(30,34,48,.18);pointer-events:auto}
-.seg button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;height:48px;border-radius:14px;font-weight:800;font-size:10.5px;color:var(--muted);white-space:nowrap;letter-spacing:-.2px}
+.seg{position:absolute;right:0;bottom:calc(var(--rb) + 25dvh + 20px);width:60px;display:flex;flex-direction:column-reverse;gap:4px;padding:6px 4px;background:color-mix(in srgb,var(--card) 92%,transparent);border-radius:22px 0 0 22px;box-shadow:-4px 4px 22px rgba(30,34,48,.18);pointer-events:auto}
+.seg button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;height:44px;border-radius:14px;font-weight:800;font-size:10.5px;color:var(--muted);white-space:nowrap;letter-spacing:-.2px}
 .seg button span{font-size:20px;line-height:1}
 .seg button.on{background:linear-gradient(135deg,#2E6BFF,#8A3CFF);color:#fff;box-shadow:0 4px 12px rgba(46,107,255,.35)}
 .seg .seg-n:not(:empty){position:absolute;top:1px;right:2px;margin:0;min-width:16px;height:16px;line-height:16px;padding:0 4px;font-size:10px;font-style:normal}
+/* rail */
+:root{--rb:calc(104px + env(safe-area-inset-bottom))}
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:6;pointer-events:none}
-.bbar{position:absolute;left:0;right:0;bottom:0;display:flex;gap:12px;align-items:center;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 -6px 24px rgba(30,34,48,.12);border-radius:24px 24px 0 0;pointer-events:auto}
-.today-btn{flex:1;height:52px;border-radius:18px;background:linear-gradient(135deg,#FFB020,#FF7A3D);color:#fff;font-weight:800;font-size:17px;box-shadow:0 6px 18px rgba(255,122,61,.35)}
+.bbar{position:absolute;left:0;right:60px;bottom:0;display:flex;flex-direction:column;gap:6px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 -6px 24px rgba(30,34,48,.12);border-radius:22px 0 0 0;pointer-events:auto}
+#bctx{display:flex;flex-direction:column;gap:6px}
+#bctx:empty{display:none}
+.bbar .chips{padding:0}
+.bbar .chip{font-size:12.5px;height:36px}
+.bbar .sug{margin:0}
+.bbar .sh-hist{margin:0;padding:8px 12px;font-size:14px}
+.bbar .shop-add .inp,.bbar .sh-btn{height:46px}
+.bbar .sh-btn{width:46px}
+.bbar .w-occ{margin:0;display:flex;gap:6px;flex-wrap:nowrap}
+.bbar .w-occ button{flex:1;padding:0 4px;white-space:nowrap}
+.bbar .pl-new{width:100%}
+.rbtm{position:absolute;right:0;bottom:0;width:60px;height:var(--rb);box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;padding:6px 0 calc(6px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--card) 94%,transparent);border-radius:22px 0 0 0;box-shadow:-4px -4px 22px rgba(30,34,48,.14);pointer-events:auto}
+.today-btn{width:52px;height:44px;border-radius:15px;background:linear-gradient(135deg,#FFB020,#FF7A3D);color:#fff;font-weight:800;font-size:13px;box-shadow:0 5px 14px rgba(255,122,61,.35)}
 .today-btn:active,.fab:active{transform:scale(.96)}
-.fab.main{width:68px;height:52px;border-radius:18px;background:linear-gradient(135deg,#E8446D,#B83CE0);color:#fff;box-shadow:0 6px 18px rgba(184,60,224,.35)}
+.fab.main{width:52px;height:44px;border-radius:15px;background:linear-gradient(135deg,#E8446D,#B83CE0);color:#fff;box-shadow:0 5px 14px rgba(184,60,224,.35)}
 .fab svg{width:26px;height:26px}
-.dial{position:absolute;right:0;bottom:calc(84px + env(safe-area-inset-bottom));width:60px;height:25dvh;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;background:color-mix(in srgb,var(--card) 92%,transparent);border-radius:22px 0 0 22px;box-shadow:-4px 4px 22px rgba(30,34,48,.18);cursor:grab;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 18%,#000 82%,transparent);mask-image:linear-gradient(to bottom,transparent,#000 18%,#000 82%,transparent)}
+.dial{position:absolute;right:0;bottom:calc(var(--rb) + 10px);width:60px;height:25dvh;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;background:color-mix(in srgb,var(--card) 92%,transparent);border-radius:22px 0 0 22px;box-shadow:-4px 4px 22px rgba(30,34,48,.18);cursor:grab;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 18%,#000 82%,transparent);mask-image:linear-gradient(to bottom,transparent,#000 18%,#000 82%,transparent)}
 .dial:active{cursor:grabbing}
 #dial-ticks{position:absolute;left:50%;top:50%;width:0;height:0}
 .tick{position:absolute;width:48px;height:52px;margin:-26px 0 0 -24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-radius:17px;will-change:transform}
@@ -479,7 +495,6 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
     <div class="top-row">
       <h1 id="hdr-title">Kalendář</h1>
     </div>
-    <div class="chips" id="chips"></div>
   </div>
   <div class="corner">
       <button class="avatar" id="btn-settings" aria-label="Nastavení"></button>
@@ -495,7 +510,8 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
     <button data-view="poll"><span>🗳️</span>Ankety<i class="seg-n" id="poll-n"></i></button>
   </div>
   <div class="dial" id="dial"><div id="dial-ticks"></div></div>
-  <div class="bbar">
+  <div class="bbar"><div class="chips" id="chips"></div><div id="bctx"></div></div>
+  <div class="rbtm">
     <button class="today-btn" id="btn-today">Dnes</button>
     <button class="fab main" id="btn-add" aria-label="Přidat událost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
   </div>
@@ -2000,6 +2016,16 @@ async function openIdeas(){
 (function(){ try { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); c.width = c.height = 180; c.getContext('2d').drawImage(img, 0, 0, 180, 180); document.getElementById('touch-icon').href = c.toDataURL('image/png'); }; img.src = 'icon.svg'; } catch(e){} })();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 dialInit();
+
+/* spodní lišta: ovládací prvky, které byly nahoře, se přesunou dolů */
+(function(){
+  const main = $('#main'), bctx = $('#bctx'), bbar = $('.bbar');
+  const pick = () => view==='shop' ? ['#sh-sug','.shop-add','#sh-hist'] : view==='wish' ? ['.w-occ'] : view==='poll' ? ['#pl-new'] : [];
+  const dockCtx = () => { const nodes = pick().map(q => main.querySelector(q)).filter(Boolean); bctx.innerHTML = ''; nodes.forEach(n => bctx.appendChild(n)); };
+  new MutationObserver(dockCtx).observe(main, { childList: true });
+  const setH = () => document.documentElement.style.setProperty('--bbh', bbar.offsetHeight + 'px');
+  if (window.ResizeObserver) new ResizeObserver(setH).observe(bbar); setH();
+})();
 boot();
 </script>
 </body>
