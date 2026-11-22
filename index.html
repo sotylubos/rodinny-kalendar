@@ -400,6 +400,12 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
 .qm-ok{font-size:12px;font-weight:800;color:#1F8A4C;margin-top:3px}
 .preview .pm{color:var(--muted);font-weight:600;font-size:14px;margin-top:4px}
 .info-i{display:grid;place-items:center;width:24px;height:24px;margin:6px 4px 8px;border-radius:50%;border:2px solid #2E6BFF;background:#2E6BFF1A;color:#2E6BFF;font:italic 700 14px/1 Fraunces,serif;padding:0}
+.info-i[hidden]{display:none}
+.corner .info-i{margin:0;width:34px;height:34px;font-size:18px}
+.info-pop{position:fixed;right:68px;top:calc(10px + env(safe-area-inset-top));width:min(320px,calc(100vw - 84px));max-height:60dvh;overflow:auto;z-index:9;background:var(--card);border-radius:18px;box-shadow:0 12px 40px rgba(30,34,48,.28);padding:14px 16px;font-size:13.5px;line-height:1.5;color:var(--ink)}
+.info-pop[hidden]{display:none}
+.info-pop p{margin:0 0 10px}
+.info-pop p:last-child{margin:0}
 .info-i.on{background:#2E6BFF;color:#fff}
 .hint.hint-x{display:none}
 .hint.hint-x.open{display:block;margin-top:0}
@@ -499,9 +505,11 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
       <h1 id="hdr-title">Kalendář</h1>
     </div>
   </div>
+  <div class="info-pop" id="info-pop" hidden></div>
   <div class="corner">
       <button class="avatar" id="btn-settings" aria-label="Nastavení"></button>
       <button class="icon-btn" id="btn-search" aria-label="Hledat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <button class="info-i" id="btn-info" aria-label="Nápověda" hidden>i</button>
   </div>
   <main id="main"></main>
   <div class="dock">
@@ -2020,19 +2028,29 @@ async function openIdeas(){
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 dialInit();
 
-/* návody se sbalí do ikonky „i“ v kroužku */
+/* návody: v sekcích se otevírají ikonkou „i“ v pravém horním panelu, jinde (okna) ikonkou přímo u textu */
 (function(){
+  const main = $('#main'), btn = $('#btn-info'), pop = $('#info-pop');
+  const hints = () => [...main.querySelectorAll('.hint.hint-x')];
+  const refresh = () => { const hs = hints(); btn.hidden = !hs.length; if (!hs.length){ pop.hidden = true; btn.classList.remove('on'); return; }
+    const html = hs.map(h => '<p>' + h.innerHTML + '</p>').join(''); if (pop.innerHTML !== html) pop.innerHTML = html; };
+  const show = o => { pop.hidden = !o; btn.classList.toggle('on', o); };
+  btn.onclick = e => { e.stopPropagation(); refresh(); show(pop.hidden); };
+  document.addEventListener('pointerdown', e => { if (!pop.hidden && !e.target.closest('#info-pop') && !e.target.closest('#btn-info')) show(false); });
   const wrap = h => {
     if (h.dataset.i || h.hasAttribute('data-keep') || !h.textContent.trim()) return;
     h.dataset.i = '1'; h.classList.add('hint-x');
+    if (h.closest('#main')){
+      new MutationObserver(() => { refresh(); show(true); }).observe(h, { childList: true, characterData: true });
+      return;
+    }
     const b = document.createElement('button'); b.type = 'button'; b.className = 'info-i'; b.textContent = 'i'; b.setAttribute('aria-label', 'Nápověda');
     b.onclick = () => { const o = h.classList.toggle('open'); b.classList.toggle('on', o); };
     h.parentNode.insertBefore(b, h);
-    // když se text změní (např. stav diktování), nápověda se sama rozbalí
-    let first = true; new MutationObserver(() => { if (first){ first = false; } h.classList.add('open'); b.classList.add('on'); }).observe(h, { childList: true, characterData: true });
+    new MutationObserver(() => { h.classList.add('open'); b.classList.add('on'); }).observe(h, { childList: true, characterData: true });
   };
-  const scan = () => document.querySelectorAll('.hint:not([data-i])').forEach(wrap);
-  new MutationObserver(scan).observe(document.body, { childList: true, subtree: true }); scan();
+  const scan = () => { document.querySelectorAll('.hint:not([data-i])').forEach(wrap); const n = hints().length; if (!n || !pop.hidden) refresh(); else btn.hidden = false; };
+  new MutationObserver(recs => { if (recs.every(r => pop.contains(r.target))) return; scan(); }).observe(document.body, { childList: true, subtree: true }); scan();
 })();
 
 /* spodní lišta: ovládací prvky, které byly nahoře, se přesunou dolů */
