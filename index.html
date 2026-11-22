@@ -48,6 +48,8 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .claim-grid button{background:var(--card);border-radius:18px;padding:18px 10px;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;gap:8px;font-weight:700}
 
 /* ---------- app shell ---------- */
+.corner{position:fixed;right:0;top:calc(10px + env(safe-area-inset-top));width:60px;z-index:7;display:flex;flex-direction:column;align-items:center;gap:8px;padding:9px 0;background:color-mix(in srgb,var(--card) 92%,transparent);border-radius:22px 0 0 22px;box-shadow:-4px 4px 22px rgba(30,34,48,.18)}
+.corner .icon-btn{box-shadow:none;background:var(--bg)}
 #scr-app{padding-right:60px}
 .top{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 16px 8px}
 .top-row{display:flex;align-items:center;gap:10px}
@@ -476,10 +478,12 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
   <div class="top">
     <div class="top-row">
       <h1 id="hdr-title">Kalendář</h1>
-      <button class="icon-btn" id="btn-search" aria-label="Hledat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
-      <button class="avatar" id="btn-settings" aria-label="Nastavení"></button>
     </div>
     <div class="chips" id="chips"></div>
+  </div>
+  <div class="corner">
+      <button class="avatar" id="btn-settings" aria-label="Nastavení"></button>
+      <button class="icon-btn" id="btn-search" aria-label="Hledat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
   </div>
   <main id="main"></main>
   <div class="dock">
@@ -1235,12 +1239,12 @@ function iconFor(t){ const n = norm(t); for (const [re,i] of ICON_RE) if (re.tes
 
 /* ================= render ================= */
 function setView(v){
-  if (v === view) return; view = v; if (v==='list' || v==='month'){ try { localStorage.setItem('rk-view', v); } catch(_){} } document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on', x.dataset.view===v));
+  if (v === view) return; view = v; if (v==='list' || v==='month'){ try { localStorage.setItem('rk-view', v); } catch(_){} } document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on', x.dataset.view===v)); $('#btn-search').classList.toggle('hidden', !(v==='list'||v==='month'));
   if (view==='month') monthCursor = firstOfMonth(parseKey(selDay));
   render(); window.scrollTo({top:0});
 }
 document.querySelectorAll('.seg button').forEach(b => b.onclick = () => setView(b.dataset.view));
-document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x.dataset.view===view)); // otevřít v naposledy použitém pohledu kalendáře
+document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x.dataset.view===view)); $('#btn-search').classList.toggle('hidden', !(view==='list'||view==='month')); // otevřít v naposledy použitém pohledu kalendáře
 function render(){ renderCore(); dialSync(); }
 function renderCore(){
   if (!me) return;
