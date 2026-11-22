@@ -136,7 +136,6 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .seg-n:not(:empty){display:inline-block;min-width:18px;height:18px;line-height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--accent);color:#fff;font-size:11px;font-weight:800;vertical-align:1px}
 body.shopping .dial, body.shopping .rbtm{display:none!important}
 body.shopping #chips{display:none!important}
-body.shopping .seg{bottom:calc(10px + env(safe-area-inset-bottom))}
 .shop{padding-top:14px}
 .shop-add{display:flex;gap:8px}
 .shop-add .inp{flex:1;min-width:0}
@@ -400,6 +399,10 @@ textarea.inp{height:84px;padding:12px 14px;resize:none}
 .qm-ed{flex:none;width:40px;height:40px;margin:-6px -6px 0 0;border-radius:12px;background:var(--bg);font-size:17px}
 .qm-ok{font-size:12px;font-weight:800;color:#1F8A4C;margin-top:3px}
 .preview .pm{color:var(--muted);font-weight:600;font-size:14px;margin-top:4px}
+.info-i{display:grid;place-items:center;width:24px;height:24px;margin:6px 4px 8px;border-radius:50%;border:2px solid #2E6BFF;background:#2E6BFF1A;color:#2E6BFF;font:italic 700 14px/1 Fraunces,serif;padding:0}
+.info-i.on{background:#2E6BFF;color:#fff}
+.hint.hint-x{display:none}
+.hint.hint-x.open{display:block;margin-top:0}
 .hint{font-size:13px;color:var(--muted);line-height:1.5;margin:-4px 2px 14px}
 
 /* search */
@@ -907,7 +910,7 @@ async function pollSave(id, patch, isText){
   sb.functions.invoke('invite', { body: { kind: 'answer', poll_id: id } }).catch(()=>{});
 }
 function pollMenu(p){ if (!p) return;
-  openSheet(`<h3>Anketa</h3><div class="hint" style="margin-top:0">${esc(p.question)}</div>
+  openSheet(`<h3>Anketa</h3><div class="hint" data-keep style="margin-top:0">${esc(p.question)}</div>
     <button class="btn ghost" id="pm-c" style="width:100%">${p.closed_at ? '🔓 Znovu otevřít' : '🏁 Ukončit anketu'}</button>
     <button class="btn ghost" id="pm-d" style="width:100%;margin-top:10px;color:var(--danger)">🗑️ Smazat anketu</button>
     <button class="btn ghost" id="pm-x" style="width:100%;margin-top:10px">Zavřít</button>`, sh => {
@@ -1802,7 +1805,7 @@ function openSettings(){
     ${newsHtml()}
     <div class="actions" style="margin:0 0 12px"><button class="btn ghost" id="s-help">❓ Nápověda</button><button class="btn ghost" id="s-idea">💡 Mám nápad</button></div>
     <div class="toggle"><span>Upozornění<br><small style="color:var(--muted);font-weight:500">V 7:00, v 19:00 a když událost začíná</small></span><button class="sw" id="s-push" aria-label="Upozornění"></button></div>
-    <p class="hint" id="s-push-hint"></p>
+    <p class="hint" data-keep id="s-push-hint"></p>
     <details class="fam"><summary><span class="fam-av">${members.map(m=>`<span class="avatar" style="background:${m.color}">${esc(m.name[0])}</span>`).join('')}</span><span class="fam-t"><b>Rodina</b><small>${members.map(m=>esc(m.name)).join(', ')}</small></span><span class="fam-chev">›</span></summary>
     <p class="hint">Jména, barvy a e-maily. Každý se přihlašuje svým Google e-mailem.</p>
     <div id="s-list">${members.map(m=>`
@@ -2016,6 +2019,21 @@ async function openIdeas(){
 (function(){ try { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); c.width = c.height = 180; c.getContext('2d').drawImage(img, 0, 0, 180, 180); document.getElementById('touch-icon').href = c.toDataURL('image/png'); }; img.src = 'icon.svg'; } catch(e){} })();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 dialInit();
+
+/* návody se sbalí do ikonky „i“ v kroužku */
+(function(){
+  const wrap = h => {
+    if (h.dataset.i || h.hasAttribute('data-keep') || !h.textContent.trim()) return;
+    h.dataset.i = '1'; h.classList.add('hint-x');
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'info-i'; b.textContent = 'i'; b.setAttribute('aria-label', 'Nápověda');
+    b.onclick = () => { const o = h.classList.toggle('open'); b.classList.toggle('on', o); };
+    h.parentNode.insertBefore(b, h);
+    // když se text změní (např. stav diktování), nápověda se sama rozbalí
+    let first = true; new MutationObserver(() => { if (first){ first = false; } h.classList.add('open'); b.classList.add('on'); }).observe(h, { childList: true, characterData: true });
+  };
+  const scan = () => document.querySelectorAll('.hint:not([data-i])').forEach(wrap);
+  new MutationObserver(scan).observe(document.body, { childList: true, subtree: true }); scan();
+})();
 
 /* spodní lišta: ovládací prvky, které byly nahoře, se přesunou dolů */
 (function(){
